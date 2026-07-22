@@ -146,6 +146,10 @@ class PortaleFunebreNecrologi extends PortaleFunebreNecrologi\PluginBase {
                 $url      = home_url('/pf-share/'.$slug);
                 $real_url = esc_url(home_url('/'.self::$IMPOSTAZIONI['slug_singolo'].'/'.$slug));
 
+                // Il redirect va eseguito solo per i visitatori reali: i crawler dei social
+                // devono fermarsi qui per leggere i meta tag Open Graph.
+                $redirect = !self::IsSocialCrawler();
+
                 ?>
                 <!DOCTYPE html>
                 <html>
@@ -172,15 +176,22 @@ class PortaleFunebreNecrologi extends PortaleFunebreNecrologi\PluginBase {
 
                         <meta name="msapplication-TileImage" content="<?php echo esc_url($img); ?>">
                         <meta name="robots" content="noindex, nofollow">
-                        <meta http-equiv="refresh" content="0;url=<?php echo esc_url($real_url); ?>">
-
-
                     </head>
-                    <body style="opacity: 0">
+                    <body>
                         <h1><?php echo esc_attr($title); ?></h1>
                         <p><?php echo esc_attr($desc); ?></p>
-                        <img src="<?php echo esc_url($img); ?>"/>
+                        <img src="<?php echo esc_url($img); ?>" alt="<?php echo esc_attr($title); ?>"/>
                         <p><a href="<?php echo esc_url($real_url); ?>">Vai al necrologio</a></p>
+                        <?php if ($redirect) : ?>
+                        <script>
+                        (function () {
+                            // I crawler dei social non eseguono JavaScript: leggono i meta tag
+                            // qui sopra e si fermano. I browser reali proseguono al necrologio.
+                            document.documentElement.style.opacity = '0';
+                            window.location.replace(<?php echo wp_json_encode($real_url); ?>);
+                        })();
+                        </script>
+                        <?php endif; ?>
                     </body>
                 </html>
                 <?php
@@ -193,6 +204,50 @@ class PortaleFunebreNecrologi extends PortaleFunebreNecrologi\PluginBase {
 
     static function GetImpostazioni() {
         return self::$IMPOSTAZIONI;
+    }
+
+    /**
+     * Riconosce i crawler dei social network (e dei motori di ricerca) che
+     * effettuano lo scraping dei meta tag Open Graph. Per questi user agent
+     * la pagina di share non deve reindirizzare, altrimenti le informazioni
+     * di condivisione vengono lette dalla pagina di destinazione.
+     */
+    static function IsSocialCrawler() {
+
+        if (empty($_SERVER['HTTP_USER_AGENT'])) { return true; }
+
+        $ua = strtolower(sanitize_text_field(wp_unslash($_SERVER['HTTP_USER_AGENT'])));
+
+        $bots = [
+            'facebookexternalhit',
+            'facebookcatalog',
+            'facebookbot',
+            'facebot',
+            'meta-externalagent',
+            'twitterbot',
+            'linkedinbot',
+            'whatsapp',
+            'telegrambot',
+            'discordbot',
+            'slackbot',
+            'skypeuripreview',
+            'pinterest',
+            'redditbot',
+            'applebot',
+            'googlebot',
+            'bingbot',
+            'embedly',
+            'quora link preview',
+            'vkshare',
+            'w3c_validator',
+            'developers.google.com/+/web/snippet',
+        ];
+
+        foreach ($bots as $bot) {
+            if (strpos($ua, $bot) !== false) { return true; }
+        }
+
+        return false;
     }
 
     static function IsConfigurato() {
