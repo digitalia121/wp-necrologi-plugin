@@ -48,3 +48,10 @@ To receive support, contact us at [support@portalefunebre.com](mailto:support@po
 * Stats displaying
 * Single and List Obits display
 * Add various display settings
+
+= 1.0.1 =
+* Fixed facebook sharing
+
+= 1.0.2 =
+* Improved vertical layout image on facebook share
+* Added option to open in a new tab for the main image on the single obituary

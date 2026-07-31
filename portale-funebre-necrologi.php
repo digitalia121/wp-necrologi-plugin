@@ -146,6 +146,10 @@ class PortaleFunebreNecrologi extends PortaleFunebreNecrologi\PluginBase {
                 $url      = home_url('/pf-share/'.$slug);
                 $real_url = esc_url(home_url('/'.self::$IMPOSTAZIONI['slug_singolo'].'/'.$slug));
 
+                // Copia ridotta dell'immagine: serve a far usare a Facebook la
+                // scheda compatta, con la foto verticale sulla sinistra.
+                $og_img = self::GetImmagineShare($img);
+
                 // Il redirect va eseguito solo per i visitatori reali: i crawler dei social
                 // devono fermarsi qui per leggere i meta tag Open Graph.
                 $redirect = !self::IsSocialCrawler();
@@ -160,19 +164,20 @@ class PortaleFunebreNecrologi extends PortaleFunebreNecrologi\PluginBase {
                         <!-- Open Graph / Facebook -->
                         <meta property="og:title" content="<?php echo esc_attr($title); ?>" />
                         <meta property="og:description" content="<?php echo esc_attr($desc); ?>" />
-                        <meta property="og:image" content="<?php echo esc_url($img); ?>" />
-                        <meta property="og:image:secure_url" content="<?php echo esc_url($img); ?>" />
-                        <meta property="og:image:width" content="640" />
-                        <meta property="og:image:height" content="780" />
+                        <meta property="og:image" content="<?php echo esc_url($og_img['url']); ?>" />
+                        <meta property="og:image:secure_url" content="<?php echo esc_url($og_img['url']); ?>" />
+                        <meta property="og:image:width" content="<?php echo esc_attr($og_img['width']); ?>" />
+                        <meta property="og:image:height" content="<?php echo esc_attr($og_img['height']); ?>" />
+                        <meta property="og:image:alt" content="<?php echo esc_attr($title); ?>" />
                         <meta property="og:type"  content="article" />
                         <meta property="og:url" content="<?php echo esc_url($url); ?>" />
 
                         <!-- X (Twitter) -->
-                        <meta property="twitter:card" content="<?php echo esc_attr($title); ?>" />
+                        <meta property="twitter:card" content="summary" />
                         <meta property="twitter:url" content="<?php echo esc_url($real_url); ?>" />
                         <meta property="twitter:title" content="<?php echo esc_attr($title); ?>" />
                         <meta property="twitter:description" content="<?php echo esc_attr($desc); ?>" />
-                        <meta property="twitter:image" content="<?php echo esc_url($img); ?>" />
+                        <meta property="twitter:image" content="<?php echo esc_url($og_img['url']); ?>" />
 
                         <meta name="msapplication-TileImage" content="<?php echo esc_url($img); ?>">
                         <meta name="robots" content="noindex, nofollow">
@@ -204,6 +209,83 @@ class PortaleFunebreNecrologi extends PortaleFunebreNecrologi\PluginBase {
 
     static function GetImpostazioni() {
         return self::$IMPOSTAZIONI;
+    }
+
+    /**
+     * Larghezza (in px) della copia usata come og:image. Facebook mostra
+     * l'anteprima grande, con l'immagine orizzontale in alto, solo quando
+     * l'immagine e' almeno 600x315: restando sotto quella soglia usa la
+     * scheda compatta, con la foto (verticale) sulla sinistra del testo.
+     */
+    const SHARE_IMG_WIDTH = 300;
+
+    /**
+     * Crea (una sola volta) una copia ridotta della foto del necrologio dentro
+     * la cartella uploads e ne restituisce url e dimensioni reali. Se qualcosa
+     * non va, si ripiega sull'immagine originale del portale.
+     *
+     * @param string $img_url URL dell'immagine originale.
+     * @return array{url:string,width:int,height:int}
+     */
+    static function GetImmagineShare($img_url) {
+
+        $originale = ['url' => $img_url, 'width' => 640, 'height' => 780];
+
+        if (!$img_url) { return $originale; }
+
+        $uploads = wp_upload_dir();
+
+        if (!empty($uploads['error'])) { return $originale; }
+
+        $cartella  = trailingslashit($uploads['basedir']).'pf-share-og';
+        $base_url  = trailingslashit($uploads['baseurl']).'pf-share-og';
+        $estensione = strtolower(pathinfo((string) wp_parse_url($img_url, PHP_URL_PATH), PATHINFO_EXTENSION));
+
+        if (!in_array($estensione, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true)) { $estensione = 'jpg'; }
+
+        // La chiave e' l'URL originale: se la foto cambia, cambia anche il file.
+        $percorso = $cartella.'/'.md5($img_url).'-'.self::SHARE_IMG_WIDTH.'.'.$estensione;
+
+        if (!file_exists($percorso)) {
+
+            if (!wp_mkdir_p($cartella)) { return $originale; }
+
+            require_once ABSPATH.'wp-admin/includes/file.php';
+
+            $tmp = download_url($img_url);
+
+            if (is_wp_error($tmp)) { return $originale; }
+
+            $editor = wp_get_image_editor($tmp);
+
+            if (is_wp_error($editor)) {
+                wp_delete_file($tmp);
+                return $originale;
+            }
+
+            // Solo la larghezza: l'altezza segue le proporzioni, cosi' il
+            // formato verticale resta intatto. Se l'immagine e' gia' piu'
+            // piccola resize() fallisce e salviamo la copia com'e'.
+            $editor->resize(self::SHARE_IMG_WIDTH, null);
+
+            $salvato = $editor->save($percorso);
+
+            wp_delete_file($tmp);
+
+            if (is_wp_error($salvato) || empty($salvato['path'])) { return $originale; }
+
+            $percorso = $salvato['path'];
+        }
+
+        $dimensioni = wp_getimagesize($percorso);
+
+        if (!$dimensioni) { return $originale; }
+
+        return [
+            'url'    => $base_url.'/'.basename($percorso),
+            'width'  => (int) $dimensioni[0],
+            'height' => (int) $dimensioni[1],
+        ];
     }
 
     /**

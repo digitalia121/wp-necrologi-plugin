@@ -295,7 +295,7 @@ window.DgNecrologi = new function () {
 
         if (necro.thumbnail) {
             let immagine = get_img_url(necro.thumbnail);
-            fotoDefunto.innerHTML = '<img src="'+immagine+'"/>';
+            fotoDefunto.innerHTML = '<a href="'+immagine+'" target="_blank"><img src="'+immagine+'"/></a>';
         }
         if (necro.testo) {
             TESTO_NECROLOGIO += necro.testo;
