@@ -549,7 +549,7 @@ a.necrologio-loop,
     filter: contrast(1.1);
     backdrop-filter: blur(1px);
 }
-.necro-hero-section h1 {
+.necro-hero-section h2.titolo-hero {
     font-size: 3em;
     margin-bottom: 0.5em;
     color: #fff;

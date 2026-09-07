@@ -270,7 +270,7 @@ window.DgNecrologi = new function () {
         let defunto   = necro.dati_defunto;
 
         if (settings.defunto_in_hero == "1") {
-            nomeDefunto  = necroContent.querySelector('.necro-hero-section h1');
+            nomeDefunto  = necroContent.querySelector('.necro-hero-section .titolo-hero');
         }
 
         let titolo_cerimonia = (necro && necro.nome_defunto) ? necro.nome_defunto : '';
@@ -324,7 +324,10 @@ window.DgNecrologi = new function () {
             }
         }
 
-        nomeDefunto.innerText = titolo_cerimonia;
+        if (nomeDefunto) {
+            nomeDefunto.innerText = titolo_cerimonia;
+        }
+        
 
         if (necro.thumbnail) {
             let immagine = get_img_url(necro.thumbnail);

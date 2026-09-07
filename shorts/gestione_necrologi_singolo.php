@@ -73,7 +73,7 @@ $defunto_in_hero = (isset($impostazioni['defunto_in_hero'])) ? boolval($impostaz
   <?php if ($titolo_hero || $testo_hero): ?>
       <div class="necro-hero-section" style="background-image: url('<?php echo esc_url($bg_url); ?>')">
           <div class="necrohero-inner">
-            <?php if ($titolo_hero): ?><h1><?php echo esc_html($titolo_hero); ?></h1><?php endif; ?>
+            <?php if ($titolo_hero): ?><h2 class="titolo-hero"><?php echo esc_html($titolo_hero); ?></h2><?php endif; ?>
             <?php if ($testo_hero): ?><p><?php echo esc_html($testo_hero); ?></p><?php endif; ?>
           </div>
       </div>
@@ -86,7 +86,7 @@ $defunto_in_hero = (isset($impostazioni['defunto_in_hero'])) ? boolval($impostaz
       <picture></picture>
       
       <?php  if (!$defunto_in_hero && $tipo_layout == 'layout-alt') {?>
-        <h2 class="necro-nome-defunto"></h2>
+        <h1 class="necro-nome-defunto"></h1>
       <?php } ?>
 
     </div>
