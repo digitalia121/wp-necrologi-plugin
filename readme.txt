@@ -4,23 +4,23 @@ Tags: obituaries, condolences, funeral, memorials, necrologi
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 1.0.2
+Stable tag: 1.0.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Display and manage PortaleFunebre obituaries directly from your WordPress website.
+Display and manage Memora obituaries directly from your WordPress website.
 
 == Description ==
 
-Display and manage PortaleFunebre obituaries directly from your WordPress website.
+Display and manage Memora obituaries directly from your WordPress website.
 
 == External services ==
 
-This plugin connects to PortaleFunebre to retrieve and display obituary data, ceremony information, images, statistics, and condolence settings configured for the connected account. It sends the configured client ID and API key when the site requests obituary lists, single obituary data, or statistics.
+This plugin connects to Memora to retrieve and display obituary data, ceremony information, images, statistics, and condolence settings configured for the connected account. It sends the configured client ID and API key when the site requests obituary lists, single obituary data, or statistics.
 
-When a visitor submits a condolence message, the plugin sends the submitted form data to PortaleFunebre, including the obituary slug, selected delivery type, first name, last name, email address, phone number, and message text. The plugin also creates optional WhatsApp share/contact links using WhatsApp URLs when WhatsApp condolences or sharing are enabled for an obituary.
+When a visitor submits a condolence message, the plugin sends the submitted form data to Memora, including the obituary slug, selected delivery type, first name, last name, email address, phone number, and message text. The plugin also creates optional WhatsApp share/contact links using WhatsApp URLs when WhatsApp condolences or sharing are enabled for an obituary.
 
-PortaleFunebre is provided by Digitalia Srl. Service information and terms: https://portalefunebre.com/ . Privacy Policy: https://digitalia.srl/dichiarazione-sulla-privacy-ue/ .
+Memora is provided by Digitalia Srl. Service information and terms: https://portalefunebre.com/ . Privacy Policy: https://digitalia.srl/dichiarazione-sulla-privacy-ue/ .
 
 WhatsApp is provided by WhatsApp LLC/Meta. Terms: https://www.whatsapp.com/legal/terms-of-service . Privacy Policy: https://www.whatsapp.com/legal/privacy-policy .
 

@@ -2,7 +2,7 @@
 Plugin Name: Portale Funebre Necrologi
 Plugin URI: http://www.portalefunebre.com
 Description: Gestione dei necrologi sul tuo sito.
-Version: 1.0.2
+Version: 1.0.5
 Author: Digitalia Srl
 Author URI: https://digitalia.srl
 License: GPL2
