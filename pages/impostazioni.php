@@ -38,6 +38,13 @@ $profili = [
     'orrizontale' => 'Orrizontale',
     'verticale'   => 'Verticale'
 ];
+$ordini_lista = [
+    ''                     => 'Nessun ordine',
+    'alfabetico_asc'       => 'Ordine alfabetico crescente',
+    'alfabetico_desc'      => 'Ordine alfabetico decrescente',
+    'data_decesso_asc'     => 'Data decesso crescente',
+    'data_decesso_desc'    => 'Data decesso decrescente'
+];
 
 $valori_cerimonia = [
     ''           => 'Nascondi',
@@ -80,6 +87,7 @@ $colore_box      = (isset($impostazioni['colore_box']))      ? $impostazioni['co
 $colore_page     = (isset($impostazioni['colore_page']))     ? $impostazioni['colore_page']   : '#f9eee4';
 $num_cols        = (isset($impostazioni['num_cols']))        ? $impostazioni['num_cols'] : '6';
 $profilo_box     = (isset($impostazioni['profilo_box']))     ? $impostazioni['profilo_box'] : 'verticale';
+$ordine_lista    = (isset($impostazioni['ordine_lista']))    ? $impostazioni['ordine_lista'] : '';
 $colore_testo    = (isset($impostazioni['colore_testo']))    ? $impostazioni['colore_testo'] : '#1d1d1d';
 $api_key         = (isset($impostazioni['api_key']))         ? $impostazioni['api_key']      : '';
 $client_id       = (isset($impostazioni['client_id']))       ? $impostazioni['client_id']    : '';
@@ -132,6 +140,10 @@ if (isset($_POST['cambia_impostazioni'])) {
     $colore_box      = $color('colore_box', '#f7f6ed');
     $colore_page     = $color('colore_page', '#f9eee4');
     $profilo_box     = $field('profilo_box', 'verticale');
+    $ordine_lista    = $field('ordine_lista');
+    if (!array_key_exists($ordine_lista, $ordini_lista)) {
+        $ordine_lista = '';
+    }
     $link_gdpr       = esc_url_raw($field('link_gdpr'));
     $colore_testo    = $color('colore_testo', '#1d1d1d');
     $api_key         = $field('api_key');
@@ -184,6 +196,7 @@ if (isset($_POST['cambia_impostazioni'])) {
     $impostazioni['colore_page']     = $colore_page;
     $impostazioni['link_gdpr']       = $link_gdpr;
     $impostazioni['profilo_box']     = $profilo_box;
+    $impostazioni['ordine_lista']    = $ordine_lista;
     //$impostazioni['num_cols']        = $num_cols;
     $impostazioni['colore_testo']    = $colore_testo;
     $impostazioni['api_key']         = $api_key;
@@ -360,6 +373,14 @@ if (isset($_POST['cambia_impostazioni'])) {
                 <select name="profilo_box">
                     <?php foreach ($profili as $key => $value) { ?>
                         <option <?php if ($key == $profilo_box) { echo 'selected'; } ?> value="<?php echo esc_attr($key); ?>"><?php echo esc_html($value); ?></option>
+                    <?php } ?>
+                </select>
+            </div>
+            <div class="dgplugin-input-wrap box-prof-wrap">
+                <label>Ordine visualizzazione</label>
+                <select name="ordine_lista">
+                    <?php foreach ($ordini_lista as $key => $value) { ?>
+                        <option <?php if ($key == $ordine_lista) { echo 'selected'; } ?> value="<?php echo esc_attr($key); ?>"><?php echo esc_html($value); ?></option>
                     <?php } ?>
                 </select>
             </div>
@@ -592,4 +613,3 @@ if (isset($_POST['cambia_impostazioni'])) {
     <input type="submit" class="button button-primary" name="cambia_impostazioni" value="SALVA"/>
 
 </form>
-

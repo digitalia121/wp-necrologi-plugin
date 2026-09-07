@@ -53,6 +53,39 @@ window.DgNecrologi = new function () {
         return out;
     };
 
+    let get_data_decesso_time = function (necro) {
+        let data_morte = necro && necro.dati_defunto ? necro.dati_defunto.data_morte : null;
+        let time = data_morte ? (new Date(data_morte)).getTime() : NaN;
+        return Number.isNaN(time) ? null : time;
+    };
+
+    this.ordina_necrologi_lista = function (necrologi) {
+        if (!Array.isArray(necrologi) || !settings || !settings.ordine_lista) {
+            return necrologi;
+        }
+
+        return necrologi.sort(function (a, b) {
+            switch (settings.ordine_lista) {
+                case 'alfabetico_asc':
+                    return (a.nome_defunto || '').localeCompare((b.nome_defunto || ''), 'it', { sensitivity: 'base' });
+                case 'alfabetico_desc':
+                    return (b.nome_defunto || '').localeCompare((a.nome_defunto || ''), 'it', { sensitivity: 'base' });
+                case 'data_decesso_asc':
+                case 'data_decesso_desc':
+                    let aTime = get_data_decesso_time(a);
+                    let bTime = get_data_decesso_time(b);
+
+                    if (aTime === null && bTime === null) { return 0; }
+                    if (aTime === null) { return 1; }
+                    if (bTime === null) { return -1; }
+
+                    return (settings.ordine_lista === 'data_decesso_desc') ? bTime - aTime : aTime - bTime;
+            }
+
+            return 0;
+        });
+    };
+
     let scheda_donazioni = function (dati) {
 
         if (!dati.ente_donazione && !dati.iban_donazione && !dati.codfisc_donazione) { return ''; }
@@ -405,6 +438,7 @@ jQuery(document).ready(function ($) {
         };
 
         DgPlugin.ajax('get_lista_necrologi', function (cerimonie) {
+            cerimonie = DgNecrologi.ordina_necrologi_lista(cerimonie);
             for (let i in cerimonie) {
                 if (cerimonie[i].nome_defunto) {
                     let n_div = DgNecrologi.crea_necrologio_loop(cerimonie[i]);

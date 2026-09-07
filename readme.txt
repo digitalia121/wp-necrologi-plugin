@@ -34,7 +34,7 @@ WhatsApp is provided by WhatsApp LLC/Meta. Terms: https://www.whatsapp.com/legal
 
 = How Does Portale Funebre Necrologi Work? =
 
-It offers an API Interface for linking PortaleFunebre directly to your website.
+It offers an API Interface for linking Memora directly to your website.
 
 = Where can i get in touch to receive support? =
 
@@ -55,3 +55,6 @@ To receive support, contact us at [support@portalefunebre.com](mailto:support@po
 = 1.0.2 =
 * Improved vertical layout image on facebook share
 * Added option to open in a new tab for the main image on the single obituary
+
+= 1.0.5 =
+* Added support for obituaries sorting on obituaries list
