@@ -426,9 +426,9 @@ window.DgNecrologi = new function () {
 jQuery(document).ready(function ($) {
 
     let crea_embed_map = function (indirizzo, zoomL) {
-        let econded_ind = indirizzo.replaceAll(',', '').replaceAll(' ', '%20');
+        let econded_ind = encodeURIComponent(indirizzo.replaceAll(',', ''));
         if (!zoomL) { zoomL = 14; }
-        let map_url = 'https://maps.google.com/maps?width=100%25&amp;height=450&amp;hl=en&amp;q=' + econded_ind + '&amp;t=&amp;z=' + zoomL + '&amp;ie=UTF8&amp;iwloc=B&amp;output=embed';
+        let map_url = 'https://maps.google.com/maps?width=100%25&amp;height=450&amp;hl=it&amp;q=' + econded_ind + '&amp;t=&amp;z=' + zoomL + '&amp;ie=UTF8&amp;iwloc=B&amp;output=embed';
         return '<iframe src="' + map_url + '" width="100%" height="450" style="border:0;" frameborder="0" scrolling="no" marginheight="0" marginwidth="0" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>';
     };
 
