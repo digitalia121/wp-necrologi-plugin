@@ -11,6 +11,35 @@ $cerimonie = $api->TrovaTuttiNecrologi(true);
 $portale_url  = PortaleFunebreNecrologi_API::GetEndPoint().'/area-riservata';
 $cordogli_url = get_plugin_page_url('cordogli').'&defunto=';
 
+$format_data_italiana = static function ($data) {
+    $data = trim((string) $data);
+    if (!$data) {
+        return '';
+    }
+
+    if (preg_match('/^(\d{4}-\d{2}-\d{2})/', $data, $matches)) {
+        $date = DateTimeImmutable::createFromFormat('!Y-m-d', $matches[1]);
+        if ($date) {
+            return $date->format('d/m/Y');
+        }
+    }
+
+    $timestamp = strtotime($data);
+    return $timestamp ? wp_date('d/m/Y', $timestamp) : $data;
+};
+
+$format_dati_cerimonia = static function ($cerimonia) use ($format_data_italiana) {
+    if (!$cerimonia) {
+        return '';
+    }
+
+    $luogo = isset($cerimonia->luogo) ? $cerimonia->luogo : '';
+    $data = isset($cerimonia->data) ? $format_data_italiana($cerimonia->data) : '';
+    $ora = isset($cerimonia->ora_da) ? $cerimonia->ora_da : '';
+
+    return esc_html($luogo) . ' (<b>' . esc_html($data) . '</b> ' . esc_html($ora) . ')';
+};
+
 ?>
 
 <table class="wp-list-table tabella-iscritti widefat fixed striped necrologi">
@@ -24,9 +53,9 @@ $cordogli_url = get_plugin_page_url('cordogli').'&defunto=';
                 $feretro  = $cer->chiusura_feretro;
                 $rosario  = $cer->rosario;
 
-                $dati_funerale = esc_html($funerale->luogo) . ' (<b>' . esc_html($funerale->data) . '</b> ' . esc_html($funerale->ora_da) . ')';
-                $dati_feretro  = esc_html($feretro->luogo) . ' (<b>' . esc_html($feretro->data) . '</b> ' . esc_html($feretro->ora_da) . ')';
-                $dati_rosario  = esc_html($rosario->luogo) . ' (<b>' . esc_html($rosario->data) . '</b> ' . esc_html($rosario->ora_da) . ')';
+                $dati_funerale = $format_dati_cerimonia($funerale);
+                $dati_feretro  = $format_dati_cerimonia($feretro);
+                $dati_rosario  = $format_dati_cerimonia($rosario);
 
                 $azioni = '<a target="_blank" href="' . esc_url($portale_url) . '">edita sul portale</a>';
                 
@@ -40,7 +69,7 @@ $cordogli_url = get_plugin_page_url('cordogli').'&defunto=';
 
                 $img = '<img src="' . esc_url($thumb) . '" style="width: 40px"/>';
 
-                echo '<tr><td>' . wp_kses_post($img) . '</td><td><b>' . esc_html($cer->nome_defunto) . '</b></td><td>' . wp_kses_post($dati_funerale) . '</td><td>' . wp_kses_post($dati_funerale) . '</td><td>' . wp_kses_post($dati_funerale) . '</td><td>' . wp_kses_post($azioni) . '</td></tr>';
+                echo '<tr><td>' . wp_kses_post($img) . '</td><td><b>' . esc_html($cer->nome_defunto) . '</b></td><td>' . wp_kses_post($dati_funerale) . '</td><td>' . wp_kses_post($dati_rosario) . '</td><td>' . wp_kses_post($dati_feretro) . '</td><td>' . wp_kses_post($azioni) . '</td></tr>';
 
 
             }

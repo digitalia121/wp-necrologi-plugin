@@ -60,3 +60,4 @@ To receive support, contact us at [support@portalefunebre.com](mailto:support@po
 * Added support for obituaries sorting on obituaries list
 * SEO compliant H1 for single obituary title
 * GoogleMap now forced to use italian as language
+* Using italian format for date in the Obituaries page
