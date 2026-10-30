@@ -176,7 +176,7 @@ p.titolo-portale {
     border-bottom: 1px solid #dcdcde;
 }
 .impostazioni-header .privacy-settings-tabs-wrapper {
-    grid-template-columns: 1fr 1fr 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
     cursor: pointer;
 }
 .impostazioni-content {

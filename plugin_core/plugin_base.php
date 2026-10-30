@@ -33,6 +33,12 @@ function get_plugin_asset_url($name) {
 
 function portale_funebre_necrologi_sanitize_ajax_data($data) {
 
+    static $multilinea = null;
+
+    if ($multilinea === null) {
+        $multilinea = (array) apply_filters('portale_funebre_necrologi_campi_multilinea', ['message', 'messaggio']);
+    }
+
     $clean = [];
 
     foreach ((array) $data as $key => $value) {
@@ -45,7 +51,7 @@ function portale_funebre_necrologi_sanitize_ajax_data($data) {
 
         if ('email' === $key) {
             $clean[$key] = sanitize_email($value);
-        } elseif (in_array($key, ['message', 'messaggio'], true)) {
+        } elseif (in_array($key, $multilinea, true)) {
             $clean[$key] = sanitize_textarea_field($value);
         } elseif (in_array($key, ['url', 'link'], true)) {
             $clean[$key] = esc_url_raw($value);

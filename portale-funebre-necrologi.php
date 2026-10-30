@@ -18,6 +18,27 @@ if (!class_exists('PortaleFunebreNecrologi_API')) {
     require_once plugin_dir_path(__FILE__) . 'inc/funebreapi/PortaleFunebreNecrologi_API.php';
 }
 
+require_once plugin_dir_path(__FILE__) . 'inc/form_cordoglio.php';
+
+// Editor del form di cordoglio: solo nella pagina Impostazioni del plugin.
+add_action('admin_enqueue_scripts', function ($hook) {
+
+    if (strpos($hook, 'portale-funebre-necrologi-impostazioni') === false) { return; }
+
+    $dir = plugin_dir_path(__FILE__) . 'scripts/';
+    $url = plugin_dir_url(__FILE__) . 'scripts/';
+
+    wp_enqueue_style('dashicons');
+    wp_enqueue_style('portale-funebre-necrologi-form-editor', $url . 'form-editor.css', [], filemtime($dir . 'form-editor.css'));
+    wp_enqueue_script('portale-funebre-necrologi-form-editor', $url . 'form-editor.js', ['jquery', 'jquery-ui-sortable'], filemtime($dir . 'form-editor.js'), true);
+});
+
+// I campi "testo lungo" del form mantengono gli a capo quando arrivano via ajax.
+add_filter('portale_funebre_necrologi_campi_multilinea', function ($chiavi) {
+    $form = PortaleFunebreNecrologi_FormCordoglio::GetConfig(PortaleFunebreNecrologi::GetImpostazioni());
+    return array_merge($chiavi, PortaleFunebreNecrologi_FormCordoglio::ChiaviMultilinea($form));
+});
+
 add_action( 'portale_funebre_necrologi_head_left', function () {
     $link = PortaleFunebreNecrologi_API::GetLoginPath();
     echo '<p class="titolo-portale">Accedi al portale</p><a href="' . esc_url($link) . '" target="_blank" rel="noopener noreferrer" class="button">Accedi ora</a>';
@@ -373,8 +394,16 @@ PortaleFunebreNecrologi::add_ajax_call('get_anteprima_necrologi', function () {
 });
 PortaleFunebreNecrologi::add_ajax_call('invia_cordoglio_api', function ($var) {
     if (!PortaleFunebreNecrologi::$inInst) { return; }
+
+    $impostazioni = PortaleFunebreNecrologi::GetImpostazioni();
+    $form         = PortaleFunebreNecrologi_FormCordoglio::GetConfig($impostazioni);
+    $privacy_url  = isset($impostazioni['link_gdpr']) ? $impostazioni['link_gdpr'] : '';
+
+    $errore = PortaleFunebreNecrologi_FormCordoglio::Valida($form, $var, $privacy_url);
+    if ($errore) { return ['status' => 'error', 'validazione' => $errore]; }
+
     $api = new PortaleFunebreNecrologi_API();
-    return $api->InviaCordoglio($var);
+    return $api->InviaCordoglio(PortaleFunebreNecrologi_FormCordoglio::PreparaInvio($form, $var, $privacy_url));
 });
 
 new PortaleFunebreNecrologi;
@@ -383,6 +412,7 @@ new PortaleFunebreNecrologi;
 $necro_settings_array = PortaleFunebreNecrologi::GetImpostazioni()->toArray();
 unset($necro_settings_array['api_key']);
 unset($necro_settings_array['client_id']);
+unset($necro_settings_array['form_cordoglio']); // il form viene renderizzato lato server
 
 PortaleFunebreNecrologi\PluginBase::add_js_variables([
     'necro_settings' => $necro_settings_array,

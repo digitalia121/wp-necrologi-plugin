@@ -590,14 +590,14 @@ a.necrologio-loop,
     box-sizing: border-box;
     top: unset;
     left: unset;
-    background-color: var(--dg-necro-colore-page);
+    background-color: var(--pfn-cf-section-bg, var(--dg-necro-colore-page));
     opacity: unset;
     padding: 60px 40px;
 }
 .cordo-form-wrapper[active] {
     pointer-events: initial;
     user-select: initial;
-    background-color: rgba(12, 12, 15, 0.5);
+    background-color: var(--pfn-cf-overlay, rgba(12, 12, 15, 0.5));
     opacity: 1.0;
 }
 .cordo-form-wrapper .form-container form {
@@ -615,14 +615,21 @@ a.necrologio-loop,
 }
 
 .form-container {
-    background-color: var(--dg-necro-colore-box);
-    padding: 20px;
-    border-radius: 10px;
+    background-color: var(--pfn-cf-form-bg, var(--dg-necro-colore-box));
+    padding: var(--pfn-cf-padding, 20px);
+    border-radius: var(--pfn-cf-radius, 10px);
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    box-sizing: border-box;
     width: 100%;
-    max-width: 600px;
+    /* la larghezza massima riguarda il contenuto: il padding si aggiunge, come prima */
+    max-width: calc(var(--pfn-cf-max-width, 600px) + 2 * var(--pfn-cf-padding, 20px));
+    max-height: 100%;
+    overflow-y: auto;
     display: block;
     margin: 0 auto;
+}
+.pfn-cf-no-shadow .form-container {
+    box-shadow: none;
 }
 
 .form-container form {
@@ -634,11 +641,6 @@ a.necrologio-loop,
 
 .no-popup .form-container form {
     padding: 0;
-}
-
-.form-container .form-row {
-    display: flex;
-    justify-content: space-between;
 }
 
 .form-container .form-group {
@@ -653,18 +655,23 @@ a.necrologio-loop,
 
 .form-container label {
     margin-bottom: 5px;
-    color: #fff;
+    color: var(--pfn-cf-label, #fff);
 }
 
-.form-container input, .form-container textarea {
-    padding: 10px;
-    border: 1px solid #55555596;
-    border-radius: 5px;
-    background-color: #ffffffee;
+.form-container input, .form-container textarea, .form-container select {
+    padding: var(--pfn-cf-input-pad, 10px);
+    border: var(--pfn-cf-border-width, 1px) solid var(--pfn-cf-input-border, #55555596);
+    border-radius: var(--pfn-cf-input-radius, 5px);
+    background-color: var(--pfn-cf-input-bg, #ffffffee);
+    color: var(--pfn-cf-input-text, inherit);
+    font-family: inherit;
+    font-size: var(--pfn-cf-input-font, inherit);
+    box-sizing: border-box;
+    max-width: 100%;
 }
 
-.form-container input:focus, .form-container textarea:focus {
-    border-color: #888;
+.form-container input:focus, .form-container textarea:focus, .form-container select:focus {
+    border-color: var(--pfn-cf-focus, #888);
     outline: none;
 }
 
@@ -676,17 +683,21 @@ a.necrologio-loop,
     width: 100%;
     padding: 10px;
     border: none;
-    border-radius: 5px;
+    border-radius: var(--pfn-cf-btn-radius, 5px);
     cursor: pointer;
-    transition: background-color 0.3s;
-    background-color: #ffffff8f;
-    color: var(--dg-necro-colore-box);
+    transition: background-color 0.3s, filter 0.3s;
+    background-color: var(--pfn-cf-btn-bg, #ffffff8f);
+    color: var(--pfn-cf-btn-text, var(--dg-necro-colore-box));
     text-transform: uppercase;
     font-weight: bold;
 }
 
 .form-container button:hover {
     background-color: #ffffff54;
+}
+.pfn-cf-btn-custom .form-container button:hover {
+    background-color: var(--pfn-cf-btn-bg);
+    filter: brightness(0.9);
 }
 
 .form-container button.popclose {
@@ -703,7 +714,7 @@ a.necrologio-loop,
     width: 100%;
 }
 .form-container button.popclose svg path {
-    stroke: #ffff;
+    stroke: var(--pfn-cf-label, #fff);
 }
 .form-group.pvcy-group p {
     display: flex;
@@ -727,23 +738,29 @@ a.necrologio-loop,
 }
 */
 
-.form-container .form-group input[type="checkbox"] {
+.form-container .form-group input[type="checkbox"],
+.form-container .form-group input[type="radio"] {
     height: auto;
     appearance: none;
     -webkit-appearance: none;
     -moz-appearance: none;
-    border: 1px solid #fff;
+    border: 1px solid var(--pfn-cf-label, #fff);
     background-color: transparent;
     padding: 6px;
     margin-bottom: 0;
     max-width: 6px;
     margin-right: 10px;
+    flex-shrink: 0;
+}
+.form-container .form-group input[type="radio"] {
+    border-radius: 50%;
 }
 .form-container .form-group input:checked {
-    background-color: #fff;
+    background-color: var(--pfn-cf-label, #fff);
 }
-.form-container .form-group.full a {
-    color: #fff;
+.form-container .form-group.full a,
+.form-container .pfn-cf-field a {
+    color: var(--pfn-cf-link, #fff);
 }
 .form-container .convalidazione .dg_spinner {
     width: 22px;
@@ -752,6 +769,110 @@ a.necrologio-loop,
     margin: 0 auto;
     margin-bottom: 10px;
 }
+
+/* form di cordoglio configurabile: griglia a 12 colonne (vedi inc/form_cordoglio.php) */
+.form-container .pfn-cf-grid {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: var(--pfn-cf-gap-x, 16px);
+    row-gap: var(--pfn-cf-gap-y, 15px);
+    margin-bottom: var(--pfn-cf-gap-y, 15px);
+}
+.form-container .pfn-cf-grid .pfn-cf-field {
+    width: auto;
+    margin: 0;
+    min-width: 0;
+    grid-column-end: span var(--pfn-span, 12);
+}
+.form-container .pfn-cf-grid .pfn-cf-field.pfn-cf-newrow {
+    grid-column-start: 1;
+}
+.form-container .pfn-cf-field label,
+.form-container .pfn-cf-field .pfn-cf-label {
+    font-size: var(--pfn-cf-label-size, inherit);
+}
+.form-container .pfn-cf-field .pfn-cf-label {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--pfn-cf-label, #fff);
+}
+.form-container .pfn-cf-field input:not([type="checkbox"]):not([type="radio"]),
+.form-container .pfn-cf-field select,
+.form-container .pfn-cf-field textarea {
+    width: 100%;
+}
+.form-container .pfn-cf-req {
+    color: var(--pfn-cf-req, inherit);
+    margin-left: 2px;
+}
+.form-container .pfn-cf-help {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.85em;
+    opacity: 0.8;
+    color: var(--pfn-cf-label, #fff);
+}
+.form-container .pfn-cf-choices {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+}
+.form-container .pfn-cf-field label.pfn-cf-choice {
+    display: inline-flex;
+    align-items: center;
+    margin: 0;
+    line-height: 1.2;
+    cursor: pointer;
+}
+.form-container .pfn-cf-heading-text,
+.form-container .pfn-cf-paragraph-text,
+.form-container .pfn-cf-title,
+.form-container .pfn-cf-subtitle {
+    color: var(--pfn-cf-label, #fff);
+    margin: 0;
+}
+.form-container .pfn-cf-title {
+    font-size: var(--pfn-cf-title-size, 1.4em);
+    margin-bottom: 6px;
+}
+.form-container .pfn-cf-subtitle {
+    margin-bottom: 18px;
+    opacity: 0.9;
+}
+.form-container .pfn-cf-heading-text {
+    font-size: 1.1em;
+    padding-top: 6px;
+}
+.pfn-cf-labels-hidden .form-container .pfn-cf-field > label.pfn-cf-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+.pfn-cf-btn-left .form-container button.invia-a-api,
+.pfn-cf-btn-center .form-container button.invia-a-api,
+.pfn-cf-btn-right .form-container button.invia-a-api {
+    display: block;
+    width: auto;
+    min-width: 160px;
+    padding-left: 32px;
+    padding-right: 32px;
+}
+.pfn-cf-btn-center .form-container button.invia-a-api { margin-left: auto; margin-right: auto; }
+.pfn-cf-btn-right .form-container button.invia-a-api { margin-left: auto; }
+
+@media only screen and (max-width: 600px) {
+    .form-container .pfn-cf-grid .pfn-cf-field {
+        grid-column-end: span var(--pfn-span-m, 12);
+    }
+    .no-popup .cordo-form-wrapper,
+    .no-popup .cordo-form-wrapper[active] {
+        padding: 30px 16px;
+    }
+}
+
 /* responsive del necrologio singolo */
 @media only screen and (min-width:768px) { 
     

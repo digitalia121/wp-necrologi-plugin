@@ -47,8 +47,24 @@ window.DgNecrologi = new function () {
         let out = {};
         $form.find('input, select, textarea').each(function () {
             let kname = this.getAttribute('name');
-            let value = this.value;
-            out[kname] = value;
+            if (!kname) { return; }
+            let type = this.getAttribute('type');
+            if (type === 'checkbox' && kname.slice(-2) === '[]') {
+                let k = kname.slice(0, -2);
+                out[k] = out[k] || [];
+                if (this.checked) { out[k].push(this.value); }
+                return;
+            }
+            if (type === 'checkbox') {
+                out[kname] = this.checked ? this.value : '';
+                return;
+            }
+            if (type === 'radio') {
+                if (this.checked) { out[kname] = this.value; }
+                else if (!(kname in out)) { out[kname] = ''; }
+                return;
+            }
+            out[kname] = this.value;
         });
         return out;
     };
@@ -355,39 +371,57 @@ window.DgNecrologi = new function () {
 
     let convalida_form = function ($form) {
 
-        let is_valid = true;
+        let mex = '';
+
+        let testi = {
+            required: $form.attr('data-msg-required') || '{campo} è un campo obbligatorio',
+            email:    $form.attr('data-msg-email') || 'l\'email inserita è in un formato non valido',
+            privacy:  $form.attr('data-msg-privacy') || 'Devi prima accettare la privacy policy!'
+        };
 
         $form.find('.convalidazione').html('<div class="dg_spinner"></div>');
 
-        $form.find('input[required], textarea[required], select[required]').each(function () {
-            if (!is_valid) { return; }
-            let mex = '';
-            
-            if (!this.id) {
-                if (this.checked) { return; }
-                is_valid = false;
-                mex ='Devi prima accettare la privacy policy!';
-            } else {
-                if (this.value) { 
-                    if (this.getAttribute('type') == 'email') {
-                        if (validaMail(this.value)) { return; }
-                        else {
-                            mex ='l\'email inserita è in un formato non valido';
-                            is_valid = false;
-                        }
-                    } else {
-                        return;
+        $form.find('.pfn-cf-field').each(function () {
+            if (mex) { return; }
 
-                    }
-                }
-                is_valid = false;
-                if (!mex) {
-                    let campo = $form.find('label[for="'+this.id+'"]').text();
-                    mex = campo+' è un campo obbligatorio';
-                }
+            let $campo    = jQuery(this);
+            let tipo      = $campo.attr('data-type');
+            let required  = $campo.attr('data-required') === '1';
+            let etichetta = $campo.attr('data-label') || '';
+
+            if (tipo === 'heading' || tipo === 'paragraph') { return; }
+
+            let manca = function () {
+                mex = ($campo.attr('data-key') === 'privacy') ? testi.privacy : testi.required.replace('{campo}', etichetta);
+            };
+
+            if (tipo === 'consent' || tipo === 'radio' || tipo === 'checkboxes') {
+                if (required && !$campo.find('input:checked').length) { manca(); }
+                return;
             }
-            $form.find('.convalidazione').html('<h4 class="messaggio-error">'+mex+'</h4>');
+
+            let input = $campo.find('input, select, textarea').get(0);
+            if (!input) { return; }
+
+            let valore = String(input.value || '').trim();
+
+            if (!valore) {
+                if (required) { manca(); }
+                return;
+            }
+
+            if (tipo === 'email' && !validaMail(valore)) {
+                mex = testi.email;
+            } else if (input.checkValidity && !input.checkValidity()) {
+                mex = etichetta + ': ' + input.validationMessage;
+            }
         });
+
+        let is_valid = !mex;
+
+        if (mex) {
+            $form.find('.convalidazione').empty().append(jQuery('<h4 class="messaggio-error"></h4>').text(mex));
+        }
 
         if (is_valid) {
             $form.find('button.invia-a-api').removeClass('disabled');
@@ -408,13 +442,23 @@ window.DgNecrologi = new function () {
 
             let dati = raccogli_dati_cordoglio($form);
             
+            let esito = function (classe, tag, titolo, testo) {
+                let $box = jQuery('<div class="necrologi-loader"></div>');
+                $box.append(jQuery('<' + tag + '></' + tag + '>').addClass(classe).text(titolo));
+                $box.append(jQuery('<p></p>').text(testo));
+                $form.find('.input-content').empty().append($box);
+            };
+
             DgPlugin.ajax('invia_cordoglio_api',function (res) {
-                if (res.status == 'success') {
-                    $form.find('.input-content').html('<div class="necrologi-loader"><h2 class="messaggio-success">Invio riuscito</h2><p>Il tuo cordoglio è stato inviato. Grazie</p></div>');
+                if (res && res.status == 'success') {
+                    esito('messaggio-success', 'h2', $form.attr('data-success-title') || 'Invio riuscito', $form.attr('data-success-text') || 'Il tuo cordoglio è stato inviato. Grazie');
+                } else if (res && res.validazione) {
+                    // Convalida lato server fallita: il form resta compilato.
+                    $form.find('.convalidazione').empty().append(jQuery('<h4 class="messaggio-error"></h4>').text(res.validazione));
                 } else {
-                    $form.find('.input-content').html('<div class="necrologi-loader"><h1 class="messaggio-error">Errore</h1><p>Abbiamo riscontrato un errore. Si prega di riprovare piu tardi</p></div>');
+                    esito('messaggio-error', 'h1', $form.attr('data-error-title') || 'Errore', $form.attr('data-error-text') || 'Abbiamo riscontrato un errore. Si prega di riprovare piu tardi');
                 }
-                
+
             },dati);
 
         }

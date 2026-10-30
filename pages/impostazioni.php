@@ -222,6 +222,14 @@ if (isset($_POST['cambia_impostazioni'])) {
     $impostazioni['massimizza_foto'] = $massimizza_foto;
     $impostazioni['eta_su_singolo']  = $eta_su_singolo;
 
+    // Senza JavaScript l'editor non compila il campo: in quel caso si mantiene la configurazione esistente.
+    if (!empty($posted['form_cordoglio']) && is_string($posted['form_cordoglio'])) {
+        $form_inviato = json_decode($posted['form_cordoglio'], true);
+        if (is_array($form_inviato)) {
+            $impostazioni['form_cordoglio'] = PortaleFunebreNecrologi_FormCordoglio::Sanitizza($form_inviato);
+        }
+    }
+
     /*
 
     - Data Funerale / Data e luogo Funerale / Luogo funerale
@@ -238,6 +246,20 @@ if (isset($_POST['cambia_impostazioni'])) {
 
 }
 
+$form_editor = [
+    'config'      => PortaleFunebreNecrologi_FormCordoglio::GetConfig($impostazioni),
+    'predefinita' => PortaleFunebreNecrologi_FormCordoglio::Predefinita(),
+    'campo_vuoto' => PortaleFunebreNecrologi_FormCordoglio::CampoVuoto(),
+    'base'        => PortaleFunebreNecrologi_FormCordoglio::CampiBase(),
+    'riservate'   => PortaleFunebreNecrologi_FormCordoglio::CHIAVI_RISERVATE,
+    'contesto'    => [
+        'colore_box'  => $colore_box,
+        'colore_page' => $colore_page,
+        'link_gdpr'   => $link_gdpr,
+        'popup'       => (bool) $form_come_popup,
+    ],
+];
+
 ?>
 
 <form method="POST">
@@ -249,6 +271,7 @@ if (isset($_POST['cambia_impostazioni'])) {
             <a class="privacy-settings-tab active" to="slider" aria-current="true">Slider per Anteprima</a>
             <a class="privacy-settings-tab" to="lista">Lista Necrologi</a>
             <a class="privacy-settings-tab" to="singolo">Necrologio singolo</a>
+            <a class="privacy-settings-tab" to="form">Form di cordoglio</a>
             <a class="privacy-settings-tab" to="integrazione">Integrazione API</a>
         </nav>
 
@@ -580,6 +603,13 @@ if (isset($_POST['cambia_impostazioni'])) {
             </div>
 
 
+        </content>
+
+        <content tab="form">
+            <div id="pfn-form-editor" class="pfn-fe" data-editor="<?php echo esc_attr(wp_json_encode($form_editor)); ?>">
+                <p class="pfn-fe-noscript">Caricamento dell'editor del form&hellip;</p>
+            </div>
+            <input type="hidden" name="form_cordoglio" id="pfn-form-config" value=""/>
         </content>
 
         <content tab="integrazione">

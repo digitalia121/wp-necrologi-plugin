@@ -56,6 +56,9 @@ if (isset($impostazioni['sfondo_hero']) && $impostazioni['sfondo_hero']) {
 }
 $defunto_in_hero = (isset($impostazioni['defunto_in_hero'])) ? boolval($impostazioni['defunto_in_hero']) : false;
 
+$form_cordoglio = PortaleFunebreNecrologi_FormCordoglio::GetConfig($impostazioni);
+$testi_form     = $form_cordoglio['texts'];
+
 ?>
 
 <div class="necrologi-loader"><div class="dg_spinner"></div></div>
@@ -202,17 +205,20 @@ $defunto_in_hero = (isset($impostazioni['defunto_in_hero'])) ? boolval($impostaz
 
   </div>
 
-  <div class="cordo-form-wrapper" id="form-di-cordoglio">
+  <div
+    class="cordo-form-wrapper <?php echo esc_attr(PortaleFunebreNecrologi_FormCordoglio::ClassiCss($form_cordoglio)); ?>"
+    id="form-di-cordoglio"
+    style="<?php echo esc_attr(PortaleFunebreNecrologi_FormCordoglio::VariabiliCss($form_cordoglio)); ?>">
 
     <div class="form-container">
 
       <div class="form-buttons">
-        <button class="manda-con-email">MANDA CON EMAIL</button>
-        <button class="manda-con-whatsapp">MANDA CON WHATSAPP</button>
-        <button class="manda-con-pdf">MANDA CON PDF</button>
+        <button class="manda-con-email"><?php echo esc_html($testi_form['btn_email']); ?></button>
+        <button class="manda-con-whatsapp"><?php echo esc_html($testi_form['btn_whatsapp']); ?></button>
+        <button class="manda-con-pdf"><?php echo esc_html($testi_form['btn_pdf']); ?></button>
       </div>
 
-      <form action="#" method="post">
+      <form action="#" method="post" novalidate<?php foreach (PortaleFunebreNecrologi_FormCordoglio::AttributiDati($form_cordoglio) as $attr => $val) { echo ' ' . esc_attr($attr) . '="' . esc_attr($val) . '"'; } ?>>
         <input type="hidden" name="tipo" value="pdf">
         <input type="hidden" name="slug" value="">
         <button class="popclose" type="button">
@@ -223,37 +229,9 @@ $defunto_in_hero = (isset($impostazioni['defunto_in_hero'])) ? boolval($impostaz
           </svg>
         </button>
         <div class="input-content">
-          <div class="form-row">
-            <div class="form-group">
-              <label for="first-name">Nome*</label>
-              <input type="text" id="first-name" name="first-name" required>
-            </div>
-            <div class="form-group">
-              <label for="last-name">Cognome*</label>
-              <input type="text" id="last-name" name="last-name" required>
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label for="email">Email*</label>
-              <input type="email" id="email" name="email" required>
-            </div>
-            <div class="form-group">
-              <label for="phone">Telefono*</label>
-              <input type="tel" id="phone" name="phone" required>
-            </div>
-          </div>
-          <div class="form-group full">
-            <label for="message">Messaggio di Cordoglio*</label>
-            <textarea id="message" name="message" rows="5" required></textarea>
-          </div>
-          <?php if ($pvcy_link) { ?>
-            <div class="form-group pvcy-group full">
-                <p><input type="checkbox" name="privacy" required/><label for="privacy">Ho letto e accetto la <a target="_blank" href="<?php echo esc_url($pvcy_link); ?>">privacy policy</a>*</label></p>
-            </div>
-          <?php } ?>
+          <?php PortaleFunebreNecrologi_FormCordoglio::RenderCampi($form_cordoglio, $pvcy_link); ?>
           <div class="convalidazione"></div>
-          <button type="button" class="invia-a-api disabled">Invia</button>
+          <button type="button" class="invia-a-api disabled"><?php echo esc_html($testi_form['submit']); ?></button>
         </div>
       </form>
     </div>
