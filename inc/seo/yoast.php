@@ -24,12 +24,12 @@ class PortaleFunebreNecrologi_Seo_Yoast {
     static function Init() {
 
         add_filter('wpseo_title', [__CLASS__, 'Titolo'], 20);
-        add_filter('wpseo_opengraph_title', [__CLASS__, 'Titolo'], 20);
-        add_filter('wpseo_twitter_title', [__CLASS__, 'Titolo'], 20);
+        add_filter('wpseo_opengraph_title', [__CLASS__, 'TitoloSocial'], 20);
+        add_filter('wpseo_twitter_title', [__CLASS__, 'TitoloSocial'], 20);
 
         add_filter('wpseo_metadesc', [__CLASS__, 'Descrizione'], 20);
-        add_filter('wpseo_opengraph_desc', [__CLASS__, 'Descrizione'], 20);
-        add_filter('wpseo_twitter_description', [__CLASS__, 'Descrizione'], 20);
+        add_filter('wpseo_opengraph_desc', [__CLASS__, 'DescrizioneSocial'], 20);
+        add_filter('wpseo_twitter_description', [__CLASS__, 'DescrizioneSocial'], 20);
 
         add_filter('wpseo_canonical', [__CLASS__, 'Canonical'], 20);
         add_filter('wpseo_opengraph_url', [__CLASS__, 'Canonical'], 20);
@@ -49,6 +49,14 @@ class PortaleFunebreNecrologi_Seo_Yoast {
 
     static function Descrizione($valore) {
         return PortaleFunebreNecrologi_Seo::IsNecrologio() ? PortaleFunebreNecrologi_Seo::Descrizione() : $valore;
+    }
+
+    static function TitoloSocial($valore) {
+        return PortaleFunebreNecrologi_Seo::IsNecrologio() ? PortaleFunebreNecrologi_Seo::TitoloSocial() : $valore;
+    }
+
+    static function DescrizioneSocial($valore) {
+        return PortaleFunebreNecrologi_Seo::IsNecrologio() ? PortaleFunebreNecrologi_Seo::DescrizioneSocial() : $valore;
     }
 
     static function Canonical($valore) {
@@ -91,7 +99,8 @@ class PortaleFunebreNecrologi_Seo_Yoast {
 
         if (!is_array($robots)) { return $robots; }
 
-        if (PortaleFunebreNecrologi_Seo::IsContenitoreVuoto()) {
+        // Pagina contenitore vuota, oppure necrologio escluso dai risultati dalla sua pagina nel backend.
+        if (PortaleFunebreNecrologi_Seo::IsContenitoreVuoto() || (PortaleFunebreNecrologi_Seo::IsNecrologio() && !PortaleFunebreNecrologi_Seo::IsIndicizzabile())) {
             $robots['index'] = 'noindex';
             foreach (['imageindex', 'archive', 'snippet', 'max-snippet', 'max-image-preview', 'max-video-preview'] as $chiave) {
                 unset($robots[$chiave]);

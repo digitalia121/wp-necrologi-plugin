@@ -757,7 +757,7 @@ foreach (array_keys(PortaleFunebreNecrologi_Seo::SEGNAPOSTO) as $segnaposto) {
             <div class="dgplugin-input-wrap pfn-seo-wide">
                 <label for="seo_descrizione">Modello della description</label>
                 <input type="text" name="seo_descrizione" id="seo_descrizione" value="<?php echo esc_attr($seo_descrizione); ?>" placeholder="Automatica: l'inizio del testo del necrologio"/>
-                <span class="pfn-seo-hint">Vuoto = i primi <?php echo (int) PortaleFunebreNecrologi_Seo::LUNGHEZZA_DESCRIZIONE; ?> caratteri del testo del necrologio.</span>
+                <span class="pfn-seo-hint">Vuoto = i primi <?php echo (int) PortaleFunebreNecrologi_Seo::LUNGHEZZA_DESCRIZIONE; ?> caratteri del testo del necrologio. Questi modelli valgono per tutti i necrologi: titolo, description e indicizzazione del singolo necrologio si cambiano dalla sua pagina in <a href="<?php echo esc_url(PortaleFunebreNecrologi\get_plugin_page_url('necrologi')); ?>">Necrologi</a>.</span>
             </div>
 
             <div class="dgplugin-input-wrap pfn-seo-wide">
@@ -770,7 +770,7 @@ foreach (array_keys(PortaleFunebreNecrologi_Seo::SEGNAPOSTO) as $segnaposto) {
             </div>
 
             <div class="pfn-seo-anteprima" data-anteprima="<?php echo esc_attr(wp_json_encode($seo_anteprima)); ?>">
-                <span class="pfn-seo-anteprima-etichetta">Anteprima su Google<?php echo $seo_lista ? ' &middot; ' . esc_html($seo_esempio->Nome()) : ' &middot; esempio'; ?></span>
+                <span class="pfn-seo-anteprima-etichetta">Anteprima del modello su Google &middot; esempio<?php echo $seo_lista ? ': ' . esc_html($seo_esempio->Nome()) : ''; ?></span>
                 <span class="pfn-seo-anteprima-url"><?php echo esc_html($seo_esempio->Url()); ?></span>
                 <span class="pfn-seo-anteprima-titolo"></span>
                 <span class="pfn-seo-anteprima-desc"></span>

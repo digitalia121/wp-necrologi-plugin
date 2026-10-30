@@ -1,0 +1,510 @@
+/* Pagina "Necrologi" del backend: tabella (pfn-nt) e pagina del singolo necrologio (pfn-nd). */
+
+/* backend.css trasforma ogni span.dashicons in un riquadro da 48px: qui le icone restano in linea col testo. */
+.digitalia-wp-plugin .pfn-nt span.dashicons,
+.digitalia-wp-plugin .pfn-nd span.dashicons {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border-radius: 0;
+    background: none;
+    color: inherit;
+    font-size: 20px;
+    line-height: 1;
+    vertical-align: middle;
+}
+
+/* ------------------------------------------------------------------
+ * Tabella
+ * ---------------------------------------------------------------- */
+
+.pfn-nt .wp-list-table .column-foto {
+    width: 56px;
+}
+.pfn-nt .wp-list-table .column-cordogli,
+.pfn-nt .wp-list-table .column-seo {
+    width: 110px;
+}
+.pfn-nt .wp-list-table .column-data {
+    width: 120px;
+}
+.pfn-nt .wp-list-table td {
+    vertical-align: top;
+}
+.pfn-nt .pfn-nt-foto {
+    display: block;
+    width: 48px;
+    height: 48px;
+    border-radius: 4px;
+    object-fit: cover;
+    background: #f0f0f1;
+}
+.digitalia-wp-plugin .pfn-nt span.pfn-nt-foto-vuota {
+    width: 48px;
+    height: 48px;
+    color: #a7aaad;
+    font-size: 24px;
+    line-height: 48px;
+    text-align: center;
+}
+.pfn-nt .pfn-nt-sotto {
+    margin-top: 2px;
+    color: #646970;
+    font-size: 12px;
+}
+.pfn-nt .pfn-nt-vuoto {
+    color: #a7aaad;
+}
+.pfn-nt .pfn-nt-badge {
+    display: inline-block;
+    min-width: 22px;
+    padding: 0 7px;
+    border-radius: 11px;
+    background: #2271b1;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 22px;
+    text-align: center;
+    text-decoration: none;
+}
+.pfn-nt .pfn-nt-badge:hover,
+.pfn-nt .pfn-nt-badge:focus {
+    background: #135e96;
+    color: #fff;
+}
+.pfn-nt .pfn-nt-seo {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+.pfn-nt .pfn-nt-seo.is-ok  { color: #008a20; }
+.pfn-nt .pfn-nt-seo.is-off { color: #b32d2e; }
+
+@media screen and (max-width: 782px) {
+    .pfn-nt .wp-list-table .column-foto { width: auto; }
+}
+
+/* ------------------------------------------------------------------
+ * Pagina del necrologio
+ * ---------------------------------------------------------------- */
+
+.pfn-nd-torna {
+    margin: 0 0 8px;
+}
+.pfn-nd-testata {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+.pfn-nd-testata .pfn-nd-nome {
+    margin: 0 8px 0 0;
+    font-size: 23px;
+    font-weight: 400;
+    line-height: 1.3;
+}
+.pfn-nd-testata .button {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.digitalia-wp-plugin .pfn-nd-testata .button .dashicons {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+}
+.pfn-nd .notice.inline {
+    margin: 12px 0 0;
+}
+.pfn-nd #poststuff {
+    padding-top: 6px;
+}
+.pfn-nd .postbox-header .hndle {
+    cursor: default;
+}
+
+/* box "Necrologio" */
+.pfn-nd-necrologio {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+}
+.pfn-nd-foto img {
+    display: block;
+    width: 160px;
+    height: auto;
+    border-radius: 4px;
+}
+.pfn-nd-necrologio-testo {
+    flex: 1;
+    min-width: 0;
+}
+.pfn-nd-epigrafe {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #f0f0f1;
+    font-size: 14px;
+    line-height: 1.6;
+}
+.pfn-nd-epigrafe p:first-child { margin-top: 0; }
+.pfn-nd-epigrafe p:last-child  { margin-bottom: 0; }
+
+/* coppie etichetta / valore */
+.pfn-nd-dati {
+    display: grid;
+    grid-template-columns: minmax(110px, max-content) 1fr;
+    gap: 6px 16px;
+    margin: 0;
+}
+.pfn-nd-dati dt {
+    color: #646970;
+}
+.pfn-nd-dati dd {
+    margin: 0;
+}
+.pfn-nd-dati dt + dd ~ dd {
+    grid-column: 2;
+}
+.pfn-nd-colonne {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px 32px;
+}
+.pfn-nd-colonne .pfn-nd-dati {
+    grid-template-columns: max-content 1fr;
+    align-content: start;
+}
+.pfn-nd-tag {
+    display: inline-block;
+    margin: 0 4px 4px 0;
+    padding: 1px 8px;
+    border-radius: 10px;
+    background: #f0f0f1;
+    font-size: 12px;
+}
+.pfn-nd-tabella td,
+.pfn-nd-tabella th {
+    vertical-align: top;
+}
+
+/* box SEO */
+.pfn-nd-yoast {
+    margin-left: 6px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: #f3e9f1;
+    color: #a4286a;
+    font-size: 11px;
+    font-weight: 600;
+}
+.pfn-nd-schede {
+    display: flex;
+    gap: 2px;
+    margin: -6px -12px 16px;
+    padding: 0 12px;
+    border-bottom: 1px solid #dcdcde;
+}
+.pfn-nd-scheda {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: -1px;
+    padding: 10px 14px;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    background: none;
+    color: #50575e;
+    font-size: 13px;
+    cursor: pointer;
+}
+.pfn-nd-scheda:hover {
+    color: #1d2327;
+}
+.pfn-nd-scheda.is-attiva {
+    border-bottom-color: #2271b1;
+    color: #1d2327;
+    font-weight: 600;
+}
+.pfn-nd-scheda:focus-visible {
+    outline: 2px solid #2271b1;
+    outline-offset: -2px;
+}
+.pfn-nd-campo {
+    margin-bottom: 18px;
+}
+.pfn-nd-campo > label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+.pfn-nd-campo .description {
+    margin-top: 6px;
+}
+.pfn-nd-avviso {
+    margin: 8px 0 0;
+    padding: 6px 10px;
+    border-left: 4px solid #dba617;
+    background: #fcf9e8;
+}
+.pfn-nd-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 8px;
+}
+.pfn-nd-chip {
+    padding: 1px 8px;
+    border: 1px solid #c3c4c7;
+    border-radius: 999px;
+    background: #f6f7f7;
+    color: #50575e;
+    font-family: Consolas, Monaco, monospace;
+    font-size: 11px;
+    cursor: pointer;
+}
+.pfn-nd-chip:hover,
+.pfn-nd-chip:focus-visible {
+    border-color: #2271b1;
+    background: #f0f6fc;
+    color: #1d2327;
+    outline: none;
+}
+
+/* barra della lunghezza (come Yoast) */
+.pfn-nd-barra {
+    height: 4px;
+    margin-top: 6px;
+    border-radius: 2px;
+    background: #f0f0f1;
+    overflow: hidden;
+}
+.pfn-nd-barra span {
+    display: block;
+    width: 0;
+    height: 100%;
+    background: #c3c4c7;
+    transition: width .15s, background .15s;
+}
+.pfn-nd-barra.is-ok span   { background: #00a32a; }
+.pfn-nd-barra.is-warn span { background: #dba617; }
+.pfn-nd-barra.is-bad span  { background: #d63638; }
+
+.pfn-nd-etichetta {
+    display: block;
+    margin-bottom: 8px;
+    color: #646970;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+/* anteprima Google */
+.pfn-nd-anteprima-google {
+    max-width: 600px;
+    margin-bottom: 20px;
+    padding: 14px 16px;
+    border: 1px solid #dcdcde;
+    border-radius: 8px;
+    background: #fff;
+    font-family: Arial, sans-serif;
+}
+.pfn-nd-g-sito {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 4px;
+}
+.pfn-nd-g-icona {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border: 1px solid #dadce0;
+    border-radius: 50%;
+    background: #f1f3f4;
+    color: #5f6368;
+    font-size: 12px;
+}
+.pfn-nd-g-nome {
+    display: block;
+    color: #202124;
+    font-size: 14px;
+    line-height: 1.3;
+}
+.pfn-nd-g-url {
+    display: block;
+    max-width: 520px;
+    overflow: hidden;
+    color: #4d5156;
+    font-size: 12px;
+    line-height: 1.3;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+.pfn-nd-g-titolo {
+    overflow: hidden;
+    color: #1a0dab;
+    font-size: 20px;
+    line-height: 1.3;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+.pfn-nd-g-desc {
+    margin-top: 3px;
+    color: #4d5156;
+    font-size: 14px;
+    line-height: 1.58;
+}
+
+/* anteprima Facebook (scheda compatta) */
+.pfn-nd-anteprima-social {
+    max-width: 520px;
+    margin-bottom: 20px;
+}
+.pfn-nd-fb {
+    display: flex;
+    min-height: 120px;
+    border: 1px solid #dadde1;
+    background: #f2f3f5;
+    font-family: Helvetica, Arial, sans-serif;
+}
+.pfn-nd-fb-img {
+    flex: 0 0 120px;
+    background: #e4e6eb;
+}
+.pfn-nd-fb-img img {
+    display: block;
+    width: 120px;
+    height: 100%;
+    max-height: 160px;
+    object-fit: cover;
+}
+.pfn-nd-fb-testo {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    min-width: 0;
+    padding: 10px 12px;
+    border-left: 1px solid #dadde1;
+}
+.pfn-nd-fb-dominio {
+    overflow: hidden;
+    color: #606770;
+    font-size: 12px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+.pfn-nd-fb-titolo {
+    color: #1d2129;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.25;
+}
+.pfn-nd-fb-desc {
+    display: -webkit-box;
+    overflow: hidden;
+    color: #606770;
+    font-size: 14px;
+    line-height: 1.35;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+.pfn-nd-media {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* colonna laterale */
+.pfn-nd-stato ul {
+    margin: 0;
+}
+.pfn-nd-stato li {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+.pfn-nd-stato li .dashicons {
+    flex-shrink: 0;
+    color: #8c8f94;
+}
+.pfn-nd-stato li .dashicons.is-ok {
+    color: #00a32a;
+}
+.pfn-nd-cache li {
+    line-height: 1.45;
+}
+.pfn-nd-cache .description {
+    display: block;
+    margin-top: 2px;
+    font-size: 12px;
+}
+.pfn-nd-azioni .button {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.digitalia-wp-plugin .pfn-nd-azioni .button .dashicons {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+}
+.pfn-nd-link {
+    display: flex;
+    gap: 16px;
+    margin: 4px 0 0;
+}
+.pfn-nd-azioni {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 10px 12px;
+    border-top: 1px solid #dcdcde;
+    background: #f6f7f7;
+}
+.pfn-nd-modificato {
+    margin-right: auto;
+    color: #996800;
+    font-size: 12px;
+}
+
+/* analisi SEO */
+.pfn-nd-analisi {
+    margin: 0 0 8px;
+}
+.pfn-nd-analisi li {
+    position: relative;
+    margin-bottom: 8px;
+    padding-left: 20px;
+    line-height: 1.45;
+}
+.pfn-nd-analisi li::before {
+    content: "";
+    position: absolute;
+    top: 5px;
+    left: 2px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #c3c4c7;
+}
+.pfn-nd-analisi li.is-ok::before   { background: #00a32a; }
+.pfn-nd-analisi li.is-warn::before { background: #dba617; }
+.pfn-nd-analisi li.is-bad::before  { background: #d63638; }
+
+@media screen and (max-width: 782px) {
+    .pfn-nd-necrologio {
+        flex-direction: column;
+    }
+    .pfn-nd-foto img {
+        width: 120px;
+    }
+}

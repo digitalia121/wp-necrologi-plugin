@@ -228,24 +228,50 @@ class PortaleFunebreNecrologi_Seo {
      * Valori dei meta
      * ---------------------------------------------------------------- */
 
+    /** Impostazioni SEO del necrologio corrente (vuote se non personalizzate). */
+    static function Personalizzazioni() {
+        return self::IsNecrologio() ? PortaleFunebreNecrologi_SeoNecrologio::Get(self::$necrologio->Slug()) : PortaleFunebreNecrologi_SeoNecrologio::CAMPI;
+    }
+
+    /** Il necrologio corrente puo' comparire nei risultati di ricerca. */
+    static function IsIndicizzabile() {
+        return self::IsNecrologio() && self::Personalizzazioni()['noindex'] !== '1';
+    }
+
+    /**
+     * Modello del titolo da usare: quello del necrologio, altrimenti quello
+     * generale della tab SEO, altrimenti il predefinito.
+     */
+    static function ModelloTitolo($personalizzato = '') {
+        if (trim($personalizzato) !== '') { return $personalizzato; }
+        $generale = self::Impostazione('seo_titolo');
+        return trim($generale) !== '' ? $generale : self::TITOLO_PREDEFINITO;
+    }
+
     static function Titolo() {
-
-        if (!self::IsNecrologio()) { return ''; }
-
-        $modello = self::Impostazione('seo_titolo');
-        if (trim($modello) === '') { $modello = self::TITOLO_PREDEFINITO; }
-
-        $titolo = self::PulisciSeparatori(self::Sostituisci($modello, self::$necrologio));
-
-        return (string) apply_filters('portale_funebre_necrologi_seo_titolo', $titolo !== '' ? $titolo : self::$necrologio->Nome(), self::$necrologio);
+        return self::IsNecrologio() ? self::TitoloPer(self::$necrologio, self::Personalizzazioni()['titolo']) : '';
     }
 
     static function Descrizione() {
+        return self::IsNecrologio() ? self::DescrizionePer(self::$necrologio, self::Personalizzazioni()['descrizione']) : '';
+    }
 
-        if (!self::IsNecrologio()) { return ''; }
+    /**
+     * Titolo di un necrologio: usato dalla pagina pubblica e dall'anteprima
+     * nel backend, cosi' i due coincidono sempre.
+     */
+    static function TitoloPer(PortaleFunebreNecrologi_Necrologio $necro, $personalizzato = '') {
 
-        $necro   = self::$necrologio;
-        $modello = self::Impostazione('seo_descrizione');
+        $titolo = self::PulisciSeparatori(self::Sostituisci(self::ModelloTitolo($personalizzato), $necro));
+
+        return (string) apply_filters('portale_funebre_necrologi_seo_titolo', $titolo !== '' ? $titolo : $necro->Nome(), $necro);
+    }
+
+    /** Description di un necrologio (pagina pubblica e anteprima nel backend). */
+    static function DescrizionePer(PortaleFunebreNecrologi_Necrologio $necro, $personalizzato = '') {
+
+        $modello = $personalizzato;
+        if (trim($modello) === '') { $modello = self::Impostazione('seo_descrizione'); }
 
         if (trim($modello) !== '') {
             $descrizione = self::PulisciSeparatori(self::Sostituisci($modello, $necro));
@@ -266,7 +292,22 @@ class PortaleFunebreNecrologi_Seo {
     }
 
     static function Canonical() {
-        return self::IsNecrologio() ? self::$necrologio->Url() : '';
+        if (!self::IsNecrologio()) { return ''; }
+        $personalizzato = self::Personalizzazioni()['canonical'];
+        return $personalizzato !== '' ? $personalizzato : self::$necrologio->Url();
+    }
+
+    /** Titolo per Facebook, WhatsApp e X: quello social del necrologio, altrimenti il titolo SEO. */
+    static function TitoloSocial() {
+        if (!self::IsNecrologio()) { return ''; }
+        $modello = self::Personalizzazioni()['social_titolo'];
+        return $modello !== '' ? self::PulisciSeparatori(self::Sostituisci($modello, self::$necrologio)) : self::Titolo();
+    }
+
+    static function DescrizioneSocial() {
+        if (!self::IsNecrologio()) { return ''; }
+        $modello = self::Personalizzazioni()['social_descrizione'];
+        return $modello !== '' ? self::Accorcia(self::PulisciSeparatori(self::Sostituisci($modello, self::$necrologio)), 200) : self::Descrizione();
     }
 
     static function Immagine() {
@@ -281,8 +322,24 @@ class PortaleFunebreNecrologi_Seo {
      */
     static function ImmagineSocial() {
         static $immagine = false;
-        if ($immagine === false) { $immagine = self::IsNecrologio() ? self::$necrologio->ImmagineSocial() : null; }
+        if ($immagine === false) {
+            $immagine = null;
+            if (self::IsNecrologio()) {
+                $scelta   = self::ImmagineDaMedia(self::Personalizzazioni()['social_immagine']);
+                $immagine = $scelta ? $scelta : self::$necrologio->ImmagineSocial();
+            }
+        }
         return $immagine;
+    }
+
+    /**
+     * Immagine della libreria media scelta per i social.
+     *
+     * @return array{url:string,width:int,height:int}|null
+     */
+    static function ImmagineDaMedia($id) {
+        $src = $id ? wp_get_attachment_image_src((int) $id, 'large') : false;
+        return $src ? ['url' => $src[0], 'width' => (int) $src[1], 'height' => (int) $src[2]] : null;
     }
 
     /** Nome del sito come appare nei risultati e nell'Open Graph. */
@@ -313,9 +370,9 @@ class PortaleFunebreNecrologi_Seo {
     }
 
     static function RobotsCore(array $robots) {
-        if (self::IsContenitoreVuoto()) {
+        if (self::IsContenitoreVuoto() || (self::IsNecrologio() && !self::IsIndicizzabile())) {
             $robots['noindex'] = true;
-            unset($robots['index']);
+            unset($robots['index'], $robots['max-image-preview']);
             if (empty($robots['nofollow'])) { $robots['follow'] = true; }
         }
         return $robots;
@@ -334,8 +391,8 @@ class PortaleFunebreNecrologi_Seo {
         printf('<meta name="description" content="%s" />' . "\n", esc_attr($descrizione));
         printf('<meta property="og:locale" content="%s" />' . "\n", esc_attr(get_locale()));
         echo '<meta property="og:type" content="article" />' . "\n";
-        printf('<meta property="og:title" content="%s" />' . "\n", esc_attr($titolo));
-        printf('<meta property="og:description" content="%s" />' . "\n", esc_attr($descrizione));
+        printf('<meta property="og:title" content="%s" />' . "\n", esc_attr(self::TitoloSocial()));
+        printf('<meta property="og:description" content="%s" />' . "\n", esc_attr(self::DescrizioneSocial()));
         printf('<meta property="og:url" content="%s" />' . "\n", esc_url($url));
         printf('<meta property="og:site_name" content="%s" />' . "\n", esc_attr(self::NomeSito()));
         if ($immagine) {
@@ -346,8 +403,8 @@ class PortaleFunebreNecrologi_Seo {
             printf('<meta property="og:image:alt" content="%s" />' . "\n", esc_attr(PortaleFunebreNecrologi_Render::AltFoto(self::$necrologio)));
         }
         echo '<meta name="twitter:card" content="summary" />' . "\n";
-        printf('<meta name="twitter:title" content="%s" />' . "\n", esc_attr($titolo));
-        printf('<meta name="twitter:description" content="%s" />' . "\n", esc_attr($descrizione));
+        printf('<meta name="twitter:title" content="%s" />' . "\n", esc_attr(self::TitoloSocial()));
+        printf('<meta name="twitter:description" content="%s" />' . "\n", esc_attr(self::DescrizioneSocial()));
         if ($immagine) {
             printf('<meta name="twitter:image" content="%s" />' . "\n", esc_url($immagine['url']));
         }

@@ -72,5 +72,7 @@ To receive support, contact us at [support@portalefunebre.com](mailto:support@po
 * SEO: periodic update check that refreshes page caches and notifies IndexNow when obituaries change
 * Sharing: share buttons now share the obituary URL directly, which has its own Open Graph tags with the compact photo preview; old /pf-share/ links permanently redirect to the obituary
 * New SEO settings tab with search result preview
+* Obituaries admin page rebuilt as a standard WordPress list table (search, views, sorting, pagination)
+* New obituary detail page in the admin: all portal data, received condolences, and per-obituary SEO settings (SEO title, meta description, focus keyphrase with analysis, noindex, canonical URL, social title, description and image)
 * Local cache of portal data, with a backup copy used when the portal does not respond
 * Advanced condolence form editor

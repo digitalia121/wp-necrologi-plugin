@@ -47,6 +47,8 @@ class PortaleFunebreNecrologi_Sitemap {
 
         foreach (array_slice($necrologi, 0, self::MAX_URL) as $necro) {
             $slug   = $necro->Slug();
+            // Esclusi dai risultati di ricerca dalla loro pagina nel backend: niente sitemap.
+            if (!PortaleFunebreNecrologi_SeoNecrologio::IsIndicizzabile($slug)) { continue; }
             $voci[] = [
                 'loc' => $necro->Url(),
                 'mod' => isset($registro[$slug]['m']) ? (int) $registro[$slug]['m'] : 0,

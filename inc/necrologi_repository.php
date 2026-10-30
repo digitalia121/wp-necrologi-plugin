@@ -99,6 +99,41 @@ class PortaleFunebreNecrologi_Repository {
     }
 
     /**
+     * Lista completa per il backend (con cordogli, documenti e data di
+     * pubblicazione). Sempre aggiornata: non usa la cache del sito.
+     *
+     * @return array|WP_Error
+     */
+    static function GetListaCompleta() {
+
+        if (array_key_exists('lista_completa', self::$memoria)) { return self::$memoria['lista_completa']; }
+
+        $risposta = self::Api() ? self::Api()->TrovaTuttiNecrologi(true) : null;
+
+        if (!is_array($risposta)) {
+            return self::$memoria['lista_completa'] = new WP_Error('portale_funebre_non_disponibile', 'Il portale dei necrologi non risponde.');
+        }
+
+        return self::$memoria['lista_completa'] = array_values(array_filter($risposta, static function ($necro) {
+            return is_object($necro) && !empty($necro->nome_defunto) && !empty($necro->slug);
+        }));
+    }
+
+    /**
+     * Singolo necrologio completo per il backend, sempre aggiornato.
+     *
+     * @return object|false|WP_Error Come GetSingolo().
+     */
+    static function GetSingoloCompleto($slug) {
+
+        $slug = sanitize_title($slug);
+
+        if ($slug === '') { return false; }
+
+        return self::InterpretaSingolo(self::Api() ? self::Api()->TrovaNecrologioSingolo($slug, true) : null);
+    }
+
+    /**
      * Invalida la cache breve di tutti i necrologi (le copie di riserva
      * restano). Si usa al salvataggio delle impostazioni.
      */
@@ -112,6 +147,54 @@ class PortaleFunebreNecrologi_Repository {
         $chiave = 's_' . md5(sanitize_title($slug));
         delete_transient(self::Chiave($chiave));
         unset(self::$memoria[$chiave]);
+    }
+
+    /**
+     * Stato della cache di un necrologio, per il backend.
+     *
+     * @return array{
+     *   breve: array{presente:bool,assente:bool,scade:int|null},
+     *   riserva: array{presente:bool,scade:int|null},
+     *   scadenze_note: bool
+     * } "scade" e' null quando la scadenza non e' leggibile (cache a oggetti esterna).
+     */
+    static function StatoCacheSingolo($slug) {
+
+        $chiave = 's_' . md5(sanitize_title($slug));
+        $breve  = get_transient(self::Chiave($chiave));
+        $riserva = get_transient('pfn_r_' . $chiave);
+
+        return [
+            'breve'   => [
+                'presente' => is_object($breve),
+                'assente'  => $breve === self::ASSENTE,
+                'scade'    => self::Scadenza(self::Chiave($chiave)),
+            ],
+            'riserva' => [
+                'presente' => is_object($riserva),
+                'scade'    => self::Scadenza('pfn_r_' . $chiave),
+            ],
+            'scadenze_note' => !wp_using_ext_object_cache(),
+        ];
+    }
+
+    /**
+     * Rinnova subito la copia locale di un necrologio leggendola dal portale.
+     *
+     * @return bool true se il portale ha risposto con il necrologio.
+     */
+    static function AggiornaSingolo($slug) {
+        self::SvuotaSingolo($slug);
+        self::GetSingolo($slug);
+        // Se il portale non ha risposto GetSingolo restituisce la copia di riserva: conta solo la copia nuova.
+        return is_object(get_transient(self::Chiave('s_' . md5(sanitize_title($slug)))));
+    }
+
+    /** Scadenza di un transient (solo senza cache a oggetti esterna, dove i transient stanno nelle opzioni). */
+    private static function Scadenza($transient) {
+        if (wp_using_ext_object_cache()) { return null; }
+        $scadenza = (int) get_option('_transient_timeout_' . $transient);
+        return $scadenza > 0 ? $scadenza : null;
     }
 
     /** Invalida la cache breve della lista. */

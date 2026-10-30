@@ -47,7 +47,15 @@ class PortaleFunebreNecrologi_API {
         return self::GetAsseturl($image_name, 'img');
     }
 
+    /** URL di un documento allegato al necrologio. */
+    public static function GetDocUrl($file_name = '') {
+        return self::$END_POINT.'/upload/docs/'.rawurlencode($file_name);
+    }
+
     public static function GetLoginPath() { return self::$END_POINT.'/login/'; }
+
+    /** Area riservata del portale, dove si gestiscono i necrologi. */
+    public static function GetAreaRiservataUrl() { return self::$END_POINT.'/area-riservata'; }
     
     /**
      * Tempo massimo (secondi) per le letture: le pagine pubbliche vengono

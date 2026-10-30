@@ -27,6 +27,13 @@ require_once plugin_dir_path(__FILE__) . 'inc/seo/yoast.php';
 require_once plugin_dir_path(__FILE__) . 'inc/seo/schema.php';
 require_once plugin_dir_path(__FILE__) . 'inc/seo/sitemap.php';
 require_once plugin_dir_path(__FILE__) . 'inc/seo/monitor.php';
+require_once plugin_dir_path(__FILE__) . 'inc/seo/necrologio_seo.php';
+
+require_once plugin_dir_path(__FILE__) . 'inc/admin/cache_necrologio.php';
+
+// Azioni della pagina del singolo necrologio nel backend: salvataggio SEO e aggiornamento della cache.
+add_action('admin_post_' . PortaleFunebreNecrologi_SeoNecrologio::AZIONE, ['PortaleFunebreNecrologi_SeoNecrologio', 'GestisciSalvataggio']);
+add_action('admin_post_' . PortaleFunebreNecrologi_CacheNecrologio::AZIONE, ['PortaleFunebreNecrologi_CacheNecrologio', 'Gestisci']);
 
 register_deactivation_hook(__FILE__, ['PortaleFunebreNecrologi_Monitor', 'Disattiva']);
 
@@ -41,6 +48,18 @@ add_action('admin_enqueue_scripts', function ($hook) {
     wp_enqueue_style('dashicons');
     wp_enqueue_style('portale-funebre-necrologi-form-editor', $url . 'form-editor.css', [], filemtime($dir . 'form-editor.css'));
     wp_enqueue_script('portale-funebre-necrologi-form-editor', $url . 'form-editor.js', ['jquery', 'jquery-ui-sortable'], filemtime($dir . 'form-editor.js'), true);
+});
+
+// Pagina "Necrologi": tabella e pagina del singolo necrologio.
+add_action('admin_enqueue_scripts', function ($hook) {
+
+    if (strpos($hook, 'portale-funebre-necrologi-necrologi') === false) { return; }
+
+    $dir = plugin_dir_path(__FILE__) . 'scripts/';
+    $url = plugin_dir_url(__FILE__) . 'scripts/';
+
+    wp_enqueue_style('portale-funebre-necrologi-admin-necrologi', $url . 'necrologi-admin.css', [], filemtime($dir . 'necrologi-admin.css'));
+    wp_enqueue_script('portale-funebre-necrologi-admin-necrologi', $url . 'necrologi-admin.js', ['jquery'], filemtime($dir . 'necrologi-admin.js'), true);
 });
 
 // I campi "testo lungo" del form mantengono gli a capo quando arrivano via ajax.
@@ -161,20 +180,13 @@ class PortaleFunebreNecrologi extends PortaleFunebreNecrologi\PluginBase {
 
         $originale = ['url' => $img_url, 'width' => 640, 'height' => 780];
 
-        if (!$img_url) { return $originale; }
+        $file = self::FileImmagineShare($img_url);
 
-        $uploads = wp_upload_dir();
+        if (!$file) { return $originale; }
 
-        if (!empty($uploads['error'])) { return $originale; }
-
-        $cartella  = trailingslashit($uploads['basedir']).'pf-share-og';
-        $base_url  = trailingslashit($uploads['baseurl']).'pf-share-og';
-        $estensione = strtolower(pathinfo((string) wp_parse_url($img_url, PHP_URL_PATH), PATHINFO_EXTENSION));
-
-        if (!in_array($estensione, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true)) { $estensione = 'jpg'; }
-
-        // La chiave e' l'URL originale: se la foto cambia, cambia anche il file.
-        $percorso = $cartella.'/'.md5($img_url).'-'.self::SHARE_IMG_WIDTH.'.'.$estensione;
+        $cartella = $file['cartella'];
+        $base_url = $file['base_url'];
+        $percorso = $file['percorso'];
 
         if (!file_exists($percorso)) {
 
@@ -216,6 +228,36 @@ class PortaleFunebreNecrologi extends PortaleFunebreNecrologi\PluginBase {
             'url'    => $base_url.'/'.basename($percorso),
             'width'  => (int) $dimensioni[0],
             'height' => (int) $dimensioni[1],
+        ];
+    }
+
+    /**
+     * Dove si trova (o si troverebbe) la copia ridotta di una foto, senza crearla.
+     *
+     * @return array{cartella:string,base_url:string,percorso:string,url:string}|null
+     */
+    static function FileImmagineShare($img_url) {
+
+        if (!$img_url) { return null; }
+
+        $uploads = wp_upload_dir(null, false);
+
+        if (!empty($uploads['error'])) { return null; }
+
+        $cartella   = trailingslashit($uploads['basedir']).'pf-share-og';
+        $base_url   = trailingslashit($uploads['baseurl']).'pf-share-og';
+        $estensione = strtolower(pathinfo((string) wp_parse_url($img_url, PHP_URL_PATH), PATHINFO_EXTENSION));
+
+        if (!in_array($estensione, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true)) { $estensione = 'jpg'; }
+
+        // La chiave e' l'URL originale: se la foto cambia, cambia anche il file.
+        $nome = md5($img_url).'-'.self::SHARE_IMG_WIDTH.'.'.$estensione;
+
+        return [
+            'cartella' => $cartella,
+            'base_url' => $base_url,
+            'percorso' => $cartella.'/'.$nome,
+            'url'      => $base_url.'/'.$nome,
         ];
     }
 

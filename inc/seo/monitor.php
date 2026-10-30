@@ -126,11 +126,16 @@ class PortaleFunebreNecrologi_Monitor {
                 self::SvuotaCachePagine(array_merge($url, self::UrlPagineLista()));
             }
 
-            if (self::IsIndexNowAttivo()) {
-                $esito                   = self::InviaIndexNow($url);
+            // A IndexNow solo i necrologi indicizzabili (e quelli rimossi, che vanno tolti dai motori).
+            $url_indexnow = array_map(['PortaleFunebreNecrologi_Necrologio', 'UrlDaSlug'], array_merge(
+                array_filter($cambiati, ['PortaleFunebreNecrologi_SeoNecrologio', 'IsIndicizzabile']),
+                $rimossi
+            ));
+
+            if ($url_indexnow && self::IsIndexNowAttivo()) {
                 $stato['indexnow']       = $ora;
-                $stato['indexnow_esito'] = $esito;
-                $stato['indexnow_url']   = count($url);
+                $stato['indexnow_esito'] = self::InviaIndexNow($url_indexnow);
+                $stato['indexnow_url']   = count($url_indexnow);
             }
         }
 
@@ -148,6 +153,19 @@ class PortaleFunebreNecrologi_Monitor {
             $url[] = get_permalink($id);
         }
         return array_values(array_unique(array_filter($url)));
+    }
+
+    /** Plugin di cache di pagina attivi tra quelli che il plugin sa svuotare. */
+    static function PluginCachePagina() {
+        $trovati = [
+            'WP Rocket'        => function_exists('rocket_clean_files'),
+            'LiteSpeed Cache'  => defined('LSCWP_V'),
+            'W3 Total Cache'   => function_exists('w3tc_flush_url'),
+            'WP Super Cache'   => function_exists('wpsc_delete_url_cache'),
+            'SiteGround Speed Optimizer' => function_exists('sg_cachepress_purge_cache'),
+            'Cache Enabler'    => class_exists('Cache_Enabler'),
+        ];
+        return array_keys(array_filter($trovati));
     }
 
     /** Svuota la cache di pagina degli URL indicati nei plugin di cache piu' diffusi. */
