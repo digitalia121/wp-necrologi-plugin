@@ -396,6 +396,10 @@ PortaleFunebreNecrologi::add_ajax_call('invia_cordoglio_api', function ($var) {
     if (!PortaleFunebreNecrologi::$inInst) { return; }
 
     $impostazioni = PortaleFunebreNecrologi::GetImpostazioni();
+
+    // Raccolta dei cordogli disattivata nelle impostazioni: nessun invio al portale.
+    if (PortaleFunebreNecrologi_FormCordoglio::Modalita($impostazioni) === 'nessuna') { return ['status' => 'error']; }
+
     $form         = PortaleFunebreNecrologi_FormCordoglio::GetConfig($impostazioni);
     $privacy_url  = isset($impostazioni['link_gdpr']) ? $impostazioni['link_gdpr'] : '';
 

@@ -11,6 +11,8 @@ if (!defined('ABSPATH')) { exit; }
  */
 class PortaleFunebreNecrologi_FormCordoglio {
 
+    const MODALITA = ['nessuna', 'pagina', 'popup'];
+
     const MAX_CAMPI   = 60;
     const MAX_OPZIONI = 100;
 
@@ -167,6 +169,17 @@ class PortaleFunebreNecrologi_FormCordoglio {
                 'append_extra'  => true,
             ],
         ];
+    }
+
+    /**
+     * Come viene mostrato il form: 'nessuna' (i cordogli non si raccolgono),
+     * 'pagina' o 'popup'. Senza una scelta esplicita vale la vecchia opzione
+     * "Mostra come popup" (form_come_popup).
+     */
+    static function Modalita($impostazioni) {
+        $modalita = ($impostazioni && isset($impostazioni['modalita_form'])) ? $impostazioni['modalita_form'] : '';
+        if (in_array($modalita, self::MODALITA, true)) { return $modalita; }
+        return ($impostazioni && !empty($impostazioni['form_come_popup'])) ? 'popup' : 'pagina';
     }
 
     static function GetConfig($impostazioni) {

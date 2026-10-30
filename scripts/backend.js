@@ -23,12 +23,13 @@ jQuery(document).ready(function ($) {
 
     });
 
-    let initial_url = window.location;
-
     $('.impostazioni-header a[to]').click(function () {
         $('.impostazioni-header a[to]').removeClass('active').removeAttr('aria-current');
         let to = this.getAttribute('to');
-        history.pushState('', '', initial_url + '&tab=' + to);
+        // Un solo parametro "tab", aggiornato al posto di essere accodato.
+        let url = new URL(window.location.href);
+        url.searchParams.set('tab', to);
+        history.replaceState(null, '', url);
         this.classList.add('active');
         this.setAttribute('aria-current', 'true');
         $('.impostazioni-content content[tab]').removeClass('active');
@@ -38,7 +39,14 @@ jQuery(document).ready(function ($) {
     let opened_tab = new URLSearchParams(window.location.search).get('tab');
 
     if (opened_tab) {
-        $('.impostazioni-header a[to="' + opened_tab.replace(/[^a-z0-9_-]/gi, '') + '"]').trigger('click');
+        $('.impostazioni-header a[to="' + opened_tab.replace(/[^a-z0-9_-]/gi, '') + '"]:not([hidden])').trigger('click');
     }
+
+    // "Non raccogliere i cordogli" nasconde il tab dell'editor del form; l'editor
+    // viene avvisato della modalita' scelta per adattare l'anteprima.
+    $('#modalita_form').on('change', function () {
+        $('.impostazioni-header a[to="form"]').prop('hidden', this.value === 'nessuna');
+        $(document).trigger('pfn:modalita-form', [this.value]);
+    });
 
 });

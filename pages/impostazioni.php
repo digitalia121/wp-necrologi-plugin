@@ -46,6 +46,12 @@ $ordini_lista = [
     'data_decesso_desc'    => 'Data decesso decrescente'
 ];
 
+$modalita_form_scelte = [
+    'nessuna' => 'Non raccogliere i cordogli',
+    'pagina'  => 'Mostra nella pagina',
+    'popup'   => 'Mostra come popup'
+];
+
 $valori_cerimonia = [
     ''           => 'Nascondi',
     'data_luogo' => 'Data e luogo Funerale',
@@ -100,7 +106,7 @@ $mostra_eta      = (isset($impostazioni['mostra_eta']))      ? boolval($impostaz
 $mostra_donazioni= (isset($impostazioni['mostra_donazioni']))? boolval($impostazioni['mostra_donazioni']) : false;
 $mostra_orari    = (isset($impostazioni['mostra_orari']))    ? boolval($impostazioni['mostra_orari']) : false;
 $mostra_dettagli = (isset($impostazioni['mostra_dettagli'])) ? boolval($impostazioni['mostra_dettagli']) : false;
-$form_come_popup = (isset($impostazioni['form_come_popup'])) ? boolval($impostazioni['form_come_popup']) : true;
+$modalita_form   = PortaleFunebreNecrologi_FormCordoglio::Modalita($impostazioni);
 $single_layout   = (isset($impostazioni['single_layout']))   ? $impostazioni['single_layout'] : "1";
 $share_on_fb     = (isset($impostazioni['share_on_fb']))     ? boolval($impostazioni['share_on_fb']) : false;
 $share_on_tw     = (isset($impostazioni['share_on_tw']))     ? boolval($impostazioni['share_on_tw']) : false;
@@ -172,7 +178,10 @@ if (isset($_POST['cambia_impostazioni'])) {
     $mostra_orari    = $checkbox('mostra_orari');
     $mostra_dettagli = $checkbox('mostra_dettagli');
     $con_bottone     = $checkbox('con_bottone');
-    $form_come_popup = $checkbox('form_come_popup');
+    $modalita_form   = $field('modalita_form', 'pagina');
+    if (!in_array($modalita_form, PortaleFunebreNecrologi_FormCordoglio::MODALITA, true)) {
+        $modalita_form = 'pagina';
+    }
     $share_on_fb     = $checkbox('share_on_fb');
     $share_on_tw     = $checkbox('share_on_tw');
     $share_on_wa     = $checkbox('share_on_wa');
@@ -210,7 +219,8 @@ if (isset($_POST['cambia_impostazioni'])) {
     $impostazioni['mostra_orari']    = $mostra_orari;
     $impostazioni['mostra_dettagli'] = $mostra_dettagli;
     $impostazioni['single_layout']   = $single_layout;
-    $impostazioni['form_come_popup'] = $form_come_popup;
+    $impostazioni['modalita_form']   = $modalita_form;
+    $impostazioni['form_come_popup'] = ($modalita_form === 'popup') ? '1' : '0'; // opzione storica, tenuta allineata
     $impostazioni['mostra_donazioni']= $mostra_donazioni;
     $impostazioni['share_on_fb']     = $share_on_fb;
     $impostazioni['share_on_tw']     = $share_on_tw;
@@ -256,7 +266,7 @@ $form_editor = [
         'colore_box'  => $colore_box,
         'colore_page' => $colore_page,
         'link_gdpr'   => $link_gdpr,
-        'popup'       => (bool) $form_come_popup,
+        'modalita'    => $modalita_form,
     ],
 ];
 
@@ -271,7 +281,7 @@ $form_editor = [
             <a class="privacy-settings-tab active" to="slider" aria-current="true">Slider per Anteprima</a>
             <a class="privacy-settings-tab" to="lista">Lista Necrologi</a>
             <a class="privacy-settings-tab" to="singolo">Necrologio singolo</a>
-            <a class="privacy-settings-tab" to="form">Form di cordoglio</a>
+            <a class="privacy-settings-tab" to="form"<?php if ($modalita_form === 'nessuna') { echo ' hidden'; } ?>>Form di cordoglio</a>
             <a class="privacy-settings-tab" to="integrazione">Integrazione API</a>
         </nav>
 
@@ -281,7 +291,7 @@ $form_editor = [
 
         <content class="active" tab="slider">
 
-            <h3>Visualizzazione</h3>
+            <h3>Visualizzazione dello slider</h3>
             <div class="dgplugin-input-wrap box-prof-wrap">
                 <label>Desktop: numero di slide</label>
                 <select name="slide_res_desktop">
@@ -307,7 +317,7 @@ $form_editor = [
                 </select>
             </div>
             
-            <h3>Dati della cerimonia</h3>
+            <h3>Dati della cerimonia nelle slide</h3>
             <div class="dgplugin-input-wrap box-prof-wrap">
                 <label>Funerale: mostra</label>
                 <select name="slide_cerimonia">
@@ -367,7 +377,7 @@ $form_editor = [
         <content tab="lista">
 
 
-            <h3>Lista necrologi</h3>
+            <h3>Visualizzazione della lista necrologi</h3>
 
             <div class="dgplugin-input-wrap">
                 <label>Tipo di Visualizzazione</label>
@@ -415,7 +425,8 @@ $form_editor = [
                 <label>Colore Testo</label>
                 <input name="colore_testo" type="color" value="<?php echo esc_attr($colore_testo); ?>"/>
             </div>
-            <h3>Dati della cerimonia</h3>
+
+            <h3>Dati delle cerimonie nelle liste</h3>
             <div class="dgplugin-input-wrap box-prof-wrap">
                 <label>Funerale: mostra</label>
                 <select name="cerimonia">
@@ -489,7 +500,7 @@ $form_editor = [
                 $laytwo_img = get_asset_url('lay-two.svg');
             ?>
 
-            <h3>Necrologio singolo</h3>
+            <h3>Layout necrologio singolo</h3>
 
             <div class="dgplugin-input-wrap layout">
                 <label>Layout del necrologio</label>
@@ -506,7 +517,41 @@ $form_editor = [
                     <?php } ?>
                 </p>
             </div>
-            
+
+            <div class="dgplugin-input-wrap">
+                <label>Massimizza foto</label>
+                <?php if ($massimizza_foto) {  ?>
+                    <p>Mostra foto principale grande <input name="massimizza_foto" type="checkbox" checked/></p>
+                <?php } else { ?>
+                    <p>Mostra foto principale grande <input name="massimizza_foto" type="checkbox"/></p>
+                <?php } ?>
+            </div>
+
+            <div class="dgplugin-input-wrap">
+                <label>Colore della pagina</label>
+                <input name="colore_page" type="color" value="<?php echo esc_attr($colore_page); ?>"/>
+            </div>
+
+            <div class="dgplugin-input-wrap">
+                <label>Sezione Donazioni</label>
+                <?php if ($mostra_donazioni) {  ?>
+                    <p>Mostra sezione donazioni <input name="mostra_donazioni" type="checkbox" checked/></p>
+                <?php } else { ?>
+                    <p>Mostra sezione donazioni <input name="mostra_donazioni" type="checkbox"/></p>
+                <?php } ?>
+            </div>
+
+            <div class="dgplugin-input-wrap">
+                <label for="modalita_form">Form di raccolta Cordogli</label>
+                <select name="modalita_form" id="modalita_form">
+                    <?php foreach ($modalita_form_scelte as $key => $value) { ?>
+                        <option <?php if ($key === $modalita_form) { echo 'selected'; } ?> value="<?php echo esc_attr($key); ?>"><?php echo esc_html($value); ?></option>
+                    <?php } ?>
+                </select>
+            </div>
+
+            <h3>Hero section necrologio singolo</h3>
+
             <div class="dgplugin-input-wrap">
                 <label>Titolo Hero Section</label>
                 <input type="text" name="titolo_hero" value="<?php echo esc_attr($titolo_hero); ?>">
@@ -528,6 +573,8 @@ $form_editor = [
                 </div>
             </div>
 
+            <h3>Dati della cerimonia necrologio</h3>
+
             <div class="dgplugin-input-wrap">
                 <label>Nome del defunto</label>
                 <?php if ($defunto_in_hero) {  ?>
@@ -538,15 +585,6 @@ $form_editor = [
             </div>
 
             <div class="dgplugin-input-wrap">
-                <label>Massimizza foto</label>
-                <?php if ($massimizza_foto) {  ?>
-                    <p>Mostra foto principale grande <input name="massimizza_foto" type="checkbox" checked/></p>
-                <?php } else { ?>
-                    <p>Mostra foto principale grande <input name="massimizza_foto" type="checkbox"/></p>
-                <?php } ?>
-            </div>
-            
-            <div class="dgplugin-input-wrap">
                 <label>Età del Defunto</label>
                 <?php if ($eta_su_singolo) {  ?>
                     <p>Mostra Età del Defunto <input name="eta_su_singolo" type="checkbox" checked/></p>
@@ -555,27 +593,7 @@ $form_editor = [
                 <?php } ?>
             </div>
 
-            <div class="dgplugin-input-wrap">
-                <label>Sezione Donazioni</label>
-                <?php if ($mostra_donazioni) {  ?>
-                    <p>Mostra sezione donazioni <input name="mostra_donazioni" type="checkbox" checked/></p>
-                <?php } else { ?>
-                    <p>Mostra sezione donazioni <input name="mostra_donazioni" type="checkbox"/></p>
-                <?php } ?>
-            </div>
-            
-            <div class="dgplugin-input-wrap">
-                <label>Form di raccolta Cordogli</label>
-                <?php if ($form_come_popup) {  ?>
-                    <p>Mostra come Popup<input name="form_come_popup" type="checkbox" checked/></p>
-                <?php } else { ?>
-                    <p>Mostra come Popup<input name="form_come_popup" type="checkbox"/></p>
-                <?php } ?>
-            </div>
-            <div class="dgplugin-input-wrap">
-                <label>Colore della pagina</label>
-                <input name="colore_page" type="color" value="<?php echo esc_attr($colore_page); ?>"/>
-            </div>
+            <h3>Condivisione sui social del necrologio</h3>
 
             <div class="dgplugin-input-wrap">
                 <label>Facebook</label>

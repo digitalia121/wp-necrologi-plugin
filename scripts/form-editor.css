@@ -814,6 +814,22 @@
     margin-right: auto;
     font-size: 13px;
 }
+.pfn-fe-mode-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px 3px 6px;
+    border-radius: 20px;
+    background: #edfaef;
+    color: #00702a;
+    font-size: 12px;
+    font-weight: 500;
+}
+.digitalia-wp-plugin .pfn-fe .pfn-fe-mode-badge .dashicons {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+}
 .pfn-fe-preview-note {
     display: flex;
     gap: 6px;
@@ -856,6 +872,56 @@
     margin-bottom: 8px;
 }
 
+/* in pagina: accenno ai contenuti del necrologio sopra al form */
+.pfn-fe-stage .pfn-prev-page {
+    padding: 22px 40px 26px;
+    background: var(--dg-necro-colore-page, #f9eee4);
+    border-bottom: 1px dashed rgba(0, 0, 0, .15);
+}
+.pfn-fe-stage .pfn-prev-page-label {
+    display: block;
+    margin-bottom: 12px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: rgba(0, 0, 0, .4);
+}
+.pfn-fe-stage .pfn-prev-page-body {
+    display: flex;
+    gap: 18px;
+    opacity: .5;
+}
+.pfn-fe-stage .pfn-prev-photo {
+    flex-shrink: 0;
+    width: 70px;
+    height: 88px;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, .18);
+}
+.pfn-fe-stage .pfn-prev-lines {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    padding-top: 4px;
+}
+.pfn-fe-stage .pfn-prev-lines i {
+    height: 9px;
+    border-radius: 5px;
+    background: rgba(0, 0, 0, .14);
+}
+.pfn-fe-stage .pfn-prev-lines i:first-child {
+    width: 45%;
+    height: 14px;
+    background: rgba(0, 0, 0, .25);
+}
+.pfn-fe-stage .pfn-prev-lines i:last-child {
+    width: 70%;
+}
+.pfn-fe-stage.is-mobile .pfn-prev-page {
+    padding: 18px 16px 22px;
+}
+
 /* replica di frontend.css */
 .pfn-fe-stage .pfn-prev {
     box-sizing: border-box;
@@ -870,12 +936,21 @@
     padding: 50px 30px;
     background-color: var(--pfn-cf-overlay, rgba(12, 12, 15, 0.5));
 }
-.pfn-fe-stage.is-inline .pfn-prev {
-    padding: 60px 40px;
-    background-color: var(--pfn-cf-section-bg, var(--dg-necro-colore-page));
-}
 .pfn-fe-stage.is-mobile .pfn-prev {
     padding: 30px 16px;
+}
+/* in pagina il form occupa tutta la larghezza, senza angoli arrotondati e senza spazio sotto */
+.pfn-fe-stage.is-inline .pfn-prev {
+    min-height: 0;
+    padding: 60px 0 0;
+    background-color: var(--pfn-cf-section-bg, var(--dg-necro-colore-page));
+}
+.pfn-fe-stage.is-inline.is-mobile .pfn-prev {
+    padding-top: 30px;
+}
+.pfn-fe-stage.is-inline .form-container {
+    max-width: none;
+    border-radius: 0;
 }
 .pfn-fe-stage .form-container {
     background-color: var(--pfn-cf-form-bg, var(--dg-necro-colore-box));

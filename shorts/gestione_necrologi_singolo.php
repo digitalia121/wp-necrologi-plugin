@@ -36,7 +36,9 @@ $share_on_attivo = $share_on_fb || $share_on_tw || $share_on_wa;
 
 $classes = '';
 
-$mostra_come_popup = isset($impostazioni['form_come_popup']) && $impostazioni['form_come_popup'];
+$modalita_form     = PortaleFunebreNecrologi_FormCordoglio::Modalita($impostazioni);
+$mostra_come_popup = $modalita_form === 'popup';
+$raccogli_cordogli = $modalita_form !== 'nessuna';
 
 if (!$mostra_come_popup) { 
   $classes .= ' no-popup';
@@ -120,7 +122,9 @@ $testi_form     = $form_cordoglio['texts'];
 
       <div class="bottoni-azioni">
 
-        <button class="button invia-cordoglio">Invia un messaggio di cordoglio</button>
+        <?php if ($raccogli_cordogli) { ?>
+          <button class="button invia-cordoglio">Invia un messaggio di cordoglio</button>
+        <?php } ?>
         <a class="button scrivi-su-whatsapp" href="#" target="_blank">
           <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" id="Layer_1" viewBox="0 0 418.135 418.135" xml:space="preserve">
             <g>
@@ -205,6 +209,7 @@ $testi_form     = $form_cordoglio['texts'];
 
   </div>
 
+  <?php if ($raccogli_cordogli) { ?>
   <div
     class="cordo-form-wrapper <?php echo esc_attr(PortaleFunebreNecrologi_FormCordoglio::ClassiCss($form_cordoglio)); ?>"
     id="form-di-cordoglio"
@@ -236,6 +241,7 @@ $testi_form     = $form_cordoglio['texts'];
       </form>
     </div>
   </div>
+  <?php } ?>
 
 </div>
 

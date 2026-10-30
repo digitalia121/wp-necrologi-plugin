@@ -592,7 +592,7 @@ a.necrologio-loop,
     left: unset;
     background-color: var(--pfn-cf-section-bg, var(--dg-necro-colore-page));
     opacity: unset;
-    padding: 60px 40px;
+    padding: 60px 0 0;
 }
 .cordo-form-wrapper[active] {
     pointer-events: initial;
@@ -627,6 +627,11 @@ a.necrologio-loop,
     overflow-y: auto;
     display: block;
     margin: 0 auto;
+}
+/* in pagina il form occupa tutta la larghezza, senza angoli arrotondati */
+.no-popup .form-container {
+    max-width: none;
+    border-radius: 0;
 }
 .pfn-cf-no-shadow .form-container {
     box-shadow: none;
@@ -869,7 +874,7 @@ a.necrologio-loop,
     }
     .no-popup .cordo-form-wrapper,
     .no-popup .cordo-form-wrapper[active] {
-        padding: 30px 16px;
+        padding: 30px 0 0;
     }
 }
 

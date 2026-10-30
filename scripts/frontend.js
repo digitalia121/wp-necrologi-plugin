@@ -355,8 +355,9 @@ window.DgNecrologi = new function () {
 
         testoDefunto.innerHTML = TESTO_NECROLOGIO;
 
+        // Il form puo' mancare se la raccolta dei cordogli e' disattivata.
         let sluggerInput = document.querySelector('.cordo-form-wrapper form input[name="slug"]');
-        sluggerInput.value = necro.slug;
+        if (sluggerInput) { sluggerInput.value = necro.slug; }
 
         return singolo;
         

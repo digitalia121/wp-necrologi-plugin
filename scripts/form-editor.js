@@ -87,7 +87,7 @@ jQuery(function ($) {
     const SEZIONI_ASPETTO = [
         { titolo: 'Colori', icona: 'dashicons-art', temi: true, controlli: [
             { bind: 'style.colore_sfondo', tipo: 'colore', label: 'Sfondo dietro al form', aiuto: 'In popup è il velo sopra la pagina, in pagina è il colore della sezione.' },
-            { bind: 'style.bg_opacity', tipo: 'range', label: 'Opacità del velo (solo popup)', min: 0, max: 100, unita: '%' },
+            { bind: 'style.bg_opacity', tipo: 'range', label: 'Opacità del velo (solo popup)', min: 0, max: 100, unita: '%', soloPopup: true },
             { bind: 'style.colore_form', tipo: 'colore', label: 'Sfondo del form' },
             { bind: 'style.colore_etichette', tipo: 'colore', label: 'Etichette e testi' },
             { bind: 'style.colore_input', tipo: 'colore', label: 'Sfondo dei campi' },
@@ -100,9 +100,10 @@ jQuery(function ($) {
             { bind: 'style.colore_asterisco', tipo: 'colore', label: 'Asterisco obbligatorio' }
         ] },
         { titolo: 'Contenitore', icona: 'dashicons-align-center', controlli: [
-            { bind: 'style.max_width', tipo: 'range', label: 'Larghezza massima', min: 280, max: 1600, step: 10, unita: 'px' },
+            // In pagina il form e' sempre a tutta larghezza e senza angoli arrotondati.
+            { bind: 'style.max_width', tipo: 'range', label: 'Larghezza massima', min: 280, max: 1600, step: 10, unita: 'px', soloPopup: true },
             { bind: 'style.padding', tipo: 'range', label: 'Spazio interno', min: 0, max: 80, unita: 'px' },
-            { bind: 'style.form_radius', tipo: 'range', label: 'Arrotondamento angoli', min: 0, max: 40, unita: 'px' },
+            { bind: 'style.form_radius', tipo: 'range', label: 'Arrotondamento angoli', min: 0, max: 40, unita: 'px', soloPopup: true },
             { bind: 'style.shadow', tipo: 'toggle', label: 'Ombra attorno al form' }
         ] },
         { titolo: 'Campi', icona: 'dashicons-editor-table', controlli: [
@@ -232,7 +233,10 @@ jQuery(function ($) {
     let selezionato = null;
     let timerToast = null;
 
-    let ui = { tab: 'campi', aperti: [], device: 'desktop', modo: CTX.popup ? 'popup' : 'inline', contorni: false };
+    // Modalita' scelta in "Necrologio singolo": in 'pagina' l'anteprima e' sempre quella in pagina.
+    let modalita = CTX.modalita === 'popup' ? 'popup' : 'pagina';
+
+    let ui = { tab: 'campi', aperti: [], device: 'desktop', modo: modalita === 'popup' ? 'popup' : 'inline', contorni: false };
     try {
         let salvato = JSON.parse(window.sessionStorage.getItem('pfn-form-editor-ui') || 'null');
         if (salvato) { ui = Object.assign(ui, salvato); }
@@ -327,10 +331,11 @@ jQuery(function ($) {
                         '<button type="button" data-val="popup">Popup</button>' +
                         '<button type="button" data-val="inline">In pagina</button>' +
                     '</div>' +
+                    '<span class="pfn-fe-mode-badge" title="Il form è inserito nella pagina del necrologio, non si apre come popup"><span class="dashicons dashicons-text-page"></span>Nella pagina</span>' +
                     '<label class="pfn-fe-toggle is-small" title="Mostra la griglia dei campi"><input type="checkbox" data-ui="contorni"><span class="pfn-fe-toggle-ui"></span><span>Griglia</span></label>' +
                 '</div>' +
                 '<div class="pfn-fe-stage"><div class="pfn-fe-scaler"><div class="pfn-fe-canvas"></div></div></div>' +
-                '<p class="pfn-fe-preview-note"><span class="dashicons dashicons-info-outline"></span>Clicca un campo dell\'anteprima per modificarlo. La modalità reale (popup o in pagina) si sceglie in "Necrologio singolo".</p>' +
+                '<p class="pfn-fe-preview-note"><span class="dashicons dashicons-info-outline"></span><span class="pfn-fe-preview-note-text"></span></p>' +
             '</aside>' +
         '</div>' +
         '<div class="pfn-fe-toast" role="status" aria-live="polite" hidden><span class="pfn-fe-toast-text"></span><button type="button" class="pfn-fe-toast-btn"></button></div>' +
@@ -365,6 +370,7 @@ jQuery(function ($) {
     };
 
     const htmlControllo = function (c) {
+        if (c.soloPopup && modalita !== 'popup') { return ''; }
         let v = leggi(c.bind);
         let attr = 'data-bind="' + c.bind + '"';
         switch (c.tipo) {
@@ -763,12 +769,20 @@ jQuery(function ($) {
 
     const renderAnteprima = function () {
         let t = config.texts;
-        let popup = ui.modo === 'popup';
+        let popup = modalita === 'popup' && ui.modo === 'popup';
         let campi = config.fields.filter(function (f) { return f.enabled; }).map(htmlAnteprimaCampo).join('');
 
         stage.className = 'pfn-fe-stage' + (ui.device === 'mobile' ? ' is-mobile' : '') + (popup ? ' is-popup' : ' is-inline') + (ui.contorni ? ' show-grid' : '');
 
-        canvas.innerHTML =
+        // In pagina il form segue i contenuti del necrologio: li accenniamo sopra al form.
+        let pagina = popup ? '' :
+            '<div class="pfn-prev-page" aria-hidden="true">' +
+                '<span class="pfn-prev-page-label">Contenuto del necrologio</span>' +
+                '<div class="pfn-prev-page-body"><i class="pfn-prev-photo"></i><div class="pfn-prev-lines"><i></i><i></i><i></i><i></i></div></div>' +
+            '</div>';
+
+        canvas.style.setProperty('--dg-necro-colore-page', CTX.colore_page || '#f9eee4');
+        canvas.innerHTML = pagina +
             '<div class="pfn-prev ' + classiStile() + '" style="' + esc(variabili()) + '">' +
                 '<div class="form-container"><div class="pfn-prev-form">' +
                     (popup ? '<span class="pfn-prev-close" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M16 16L12 12M12 12L8 8M12 12L16 8M12 12L8 16" stroke-width="2" stroke-linecap="round"/></svg></span>' : '') +
@@ -812,6 +826,26 @@ jQuery(function ($) {
             this.hidden = this.getAttribute('data-panel') !== tab;
         });
     };
+
+    const applicaModalita = function () {
+        let popup = modalita === 'popup';
+        $root.find('.pfn-fe-preview-bar [data-ui="modo"]').prop('hidden', !popup);
+        $root.find('.pfn-fe-mode-badge').prop('hidden', popup);
+        $root.find('.pfn-fe-preview-note-text').text(popup
+            ? 'Clicca un campo dell\'anteprima per modificarlo. Il form si apre come popup sopra la pagina del necrologio.'
+            : 'Clicca un campo dell\'anteprima per modificarlo. Il form è inserito direttamente nella pagina del necrologio, senza popup.');
+    };
+
+    // La select "Form di raccolta Cordogli" (tab Necrologio singolo) puo' cambiare senza salvare.
+    $(document).on('pfn:modalita-form', function (e, valore) {
+        if (valore !== 'popup' && valore !== 'pagina') { return; }
+        modalita = valore;
+        if (modalita === 'popup') { ui.modo = 'popup'; }
+        applicaModalita();
+        aggiornaUiBar();
+        renderSezioni('aspetto', SEZIONI_ASPETTO);
+        renderAnteprima();
+    });
 
     const aggiornaUiBar = function () {
         $root.find('.pfn-fe-preview-bar [data-ui]').each(function () {
@@ -1267,6 +1301,7 @@ jQuery(function ($) {
 
     ui.aperti = ui.aperti.filter(function (id) { return !!trova(id); });
     mostraTab(ui.tab);
+    applicaModalita();
     aggiornaUiBar();
     renderTutto();
     sincronizza();
