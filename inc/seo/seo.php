@@ -273,6 +273,18 @@ class PortaleFunebreNecrologi_Seo {
         return self::IsNecrologio() ? self::$necrologio->Immagine() : '';
     }
 
+    /**
+     * Immagine per Open Graph e X: la stessa copia ridotta usata dal vecchio
+     * sharer, letta una sola volta per richiesta.
+     *
+     * @return array{url:string,width:int,height:int}|null
+     */
+    static function ImmagineSocial() {
+        static $immagine = false;
+        if ($immagine === false) { $immagine = self::IsNecrologio() ? self::$necrologio->ImmagineSocial() : null; }
+        return $immagine;
+    }
+
     /** Nome del sito come appare nei risultati e nell'Open Graph. */
     static function NomeSito() {
         return html_entity_decode(get_bloginfo('name'), ENT_QUOTES, 'UTF-8');
@@ -316,7 +328,7 @@ class PortaleFunebreNecrologi_Seo {
         $titolo      = self::Titolo();
         $descrizione = self::Descrizione();
         $url         = self::Canonical();
-        $immagine    = self::Immagine();
+        $immagine    = self::ImmagineSocial();
 
         echo "\n<!-- Portale Funebre Necrologi: SEO -->\n";
         printf('<meta name="description" content="%s" />' . "\n", esc_attr($descrizione));
@@ -327,14 +339,17 @@ class PortaleFunebreNecrologi_Seo {
         printf('<meta property="og:url" content="%s" />' . "\n", esc_url($url));
         printf('<meta property="og:site_name" content="%s" />' . "\n", esc_attr(self::NomeSito()));
         if ($immagine) {
-            printf('<meta property="og:image" content="%s" />' . "\n", esc_url($immagine));
+            printf('<meta property="og:image" content="%s" />' . "\n", esc_url($immagine['url']));
+            if (is_ssl()) { printf('<meta property="og:image:secure_url" content="%s" />' . "\n", esc_url($immagine['url'])); }
+            printf('<meta property="og:image:width" content="%d" />' . "\n", (int) $immagine['width']);
+            printf('<meta property="og:image:height" content="%d" />' . "\n", (int) $immagine['height']);
             printf('<meta property="og:image:alt" content="%s" />' . "\n", esc_attr(PortaleFunebreNecrologi_Render::AltFoto(self::$necrologio)));
         }
         echo '<meta name="twitter:card" content="summary" />' . "\n";
         printf('<meta name="twitter:title" content="%s" />' . "\n", esc_attr($titolo));
         printf('<meta name="twitter:description" content="%s" />' . "\n", esc_attr($descrizione));
         if ($immagine) {
-            printf('<meta name="twitter:image" content="%s" />' . "\n", esc_url($immagine));
+            printf('<meta name="twitter:image" content="%s" />' . "\n", esc_url($immagine['url']));
         }
 
         if (PortaleFunebreNecrologi_Schema::IsAttivo()) {

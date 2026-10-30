@@ -119,94 +119,19 @@ class PortaleFunebreNecrologi extends PortaleFunebreNecrologi\PluginBase {
             PortaleFunebreNecrologi_Seo::Init();
             PortaleFunebreNecrologi_Monitor::Init();
 
+            // Vecchio indirizzo di condivisione (/pf-share/{slug}): ora la pagina del
+            // necrologio ha i propri meta Open Graph, quindi chi arriva da un link gia'
+            // condiviso viene reindirizzato in modo permanente al necrologio (i social
+            // seguono il redirect e leggono i meta della pagina vera).
             add_action('template_redirect', function () {
 
                 $slug = sanitize_title((string) get_query_var('pf_share_slug'));
                 if (!$slug) return;
 
-                remove_all_actions('wpseo_head');
-
-                $data = PortaleFunebreNecrologi_Repository::GetSingolo($slug);
-
-                if (is_wp_error($data)) {
-                    header('Retry-After: 600');
-                    wp_die('Necrologio temporaneamente non disponibile', 'Necrologio', ['response' => 503]);
-                }
-
-                if (!$data) {
-                    wp_die('Not found', 'Not found', ['response' => 404]);
-                }
-
-                $agenzia = (isset($data->agenzia)) ? $data->agenzia : (object)['ragione_sociale' => 'Onoranze Funebri', 'partita_iva'=> ''];
-
-                $thumb = $data->thumbnail;
-                $title = esc_attr($data->nome_defunto).' - '.$agenzia->ragione_sociale;
-                $desc  = wp_strip_all_tags($data->testo);
-                $img   = PortaleFunebreNecrologi_API::GetImgUrl('').$thumb;
-
-                if (!$desc) {
-                    $desc = 'E\' mancato/a all\'affetto dei suoi cari '.$data->nome_defunto;
-                }
-                $url      = home_url('/pf-share/'.$slug);
-                $real_url = PortaleFunebreNecrologi_Necrologio::UrlDaSlug($slug);
-
-                // Copia ridotta dell'immagine: serve a far usare a Facebook la
-                // scheda compatta, con la foto verticale sulla sinistra.
-                $og_img = self::GetImmagineShare($img);
-
-                // Il redirect va eseguito solo per i visitatori reali: i crawler dei social
-                // devono fermarsi qui per leggere i meta tag Open Graph.
-                $redirect = !self::IsSocialCrawler();
-
-                ?>
-                <!DOCTYPE html>
-                <html>
-                    <head>
-
-                        <title><?php echo esc_attr($title); ?></title>
-
-                        <!-- Open Graph / Facebook -->
-                        <meta property="og:title" content="<?php echo esc_attr($title); ?>" />
-                        <meta property="og:description" content="<?php echo esc_attr($desc); ?>" />
-                        <meta property="og:image" content="<?php echo esc_url($og_img['url']); ?>" />
-                        <meta property="og:image:secure_url" content="<?php echo esc_url($og_img['url']); ?>" />
-                        <meta property="og:image:width" content="<?php echo esc_attr($og_img['width']); ?>" />
-                        <meta property="og:image:height" content="<?php echo esc_attr($og_img['height']); ?>" />
-                        <meta property="og:image:alt" content="<?php echo esc_attr($title); ?>" />
-                        <meta property="og:type"  content="article" />
-                        <meta property="og:url" content="<?php echo esc_url($url); ?>" />
-
-                        <!-- X (Twitter) -->
-                        <meta property="twitter:card" content="summary" />
-                        <meta property="twitter:url" content="<?php echo esc_url($real_url); ?>" />
-                        <meta property="twitter:title" content="<?php echo esc_attr($title); ?>" />
-                        <meta property="twitter:description" content="<?php echo esc_attr($desc); ?>" />
-                        <meta property="twitter:image" content="<?php echo esc_url($og_img['url']); ?>" />
-
-                        <meta name="msapplication-TileImage" content="<?php echo esc_url($img); ?>">
-                        <meta name="robots" content="noindex, nofollow">
-                        <link rel="canonical" href="<?php echo esc_url($real_url); ?>" />
-                    </head>
-                    <body>
-                        <h1><?php echo esc_attr($title); ?></h1>
-                        <p><?php echo esc_attr($desc); ?></p>
-                        <img src="<?php echo esc_url($img); ?>" alt="<?php echo esc_attr($title); ?>"/>
-                        <p><a href="<?php echo esc_url($real_url); ?>">Vai al necrologio</a></p>
-                        <?php if ($redirect) : ?>
-                        <script>
-                        (function () {
-                            // I crawler dei social non eseguono JavaScript: leggono i meta tag
-                            // qui sopra e si fermano. I browser reali proseguono al necrologio.
-                            document.documentElement.style.opacity = '0';
-                            window.location.replace(<?php echo wp_json_encode($real_url); ?>);
-                        })();
-                        </script>
-                        <?php endif; ?>
-                    </body>
-                </html>
-                <?php
+                wp_safe_redirect(PortaleFunebreNecrologi_Necrologio::UrlDaSlug($slug), 301, 'Portale Funebre Necrologi');
                 exit;
-            });
+
+            }, 1);
         }
             
 
@@ -257,7 +182,8 @@ class PortaleFunebreNecrologi extends PortaleFunebreNecrologi\PluginBase {
 
             require_once ABSPATH.'wp-admin/includes/file.php';
 
-            $tmp = download_url($img_url);
+            // Puo' avvenire durante la visita di un necrologio: timeout breve.
+            $tmp = download_url($img_url, 10);
 
             if (is_wp_error($tmp)) { return $originale; }
 
@@ -291,50 +217,6 @@ class PortaleFunebreNecrologi extends PortaleFunebreNecrologi\PluginBase {
             'width'  => (int) $dimensioni[0],
             'height' => (int) $dimensioni[1],
         ];
-    }
-
-    /**
-     * Riconosce i crawler dei social network (e dei motori di ricerca) che
-     * effettuano lo scraping dei meta tag Open Graph. Per questi user agent
-     * la pagina di share non deve reindirizzare, altrimenti le informazioni
-     * di condivisione vengono lette dalla pagina di destinazione.
-     */
-    static function IsSocialCrawler() {
-
-        if (empty($_SERVER['HTTP_USER_AGENT'])) { return true; }
-
-        $ua = strtolower(sanitize_text_field(wp_unslash($_SERVER['HTTP_USER_AGENT'])));
-
-        $bots = [
-            'facebookexternalhit',
-            'facebookcatalog',
-            'facebookbot',
-            'facebot',
-            'meta-externalagent',
-            'twitterbot',
-            'linkedinbot',
-            'whatsapp',
-            'telegrambot',
-            'discordbot',
-            'slackbot',
-            'skypeuripreview',
-            'pinterest',
-            'redditbot',
-            'applebot',
-            'googlebot',
-            'bingbot',
-            'embedly',
-            'quora link preview',
-            'vkshare',
-            'w3c_validator',
-            'developers.google.com/+/web/snippet',
-        ];
-
-        foreach ($bots as $bot) {
-            if (strpos($ua, $bot) !== false) { return true; }
-        }
-
-        return false;
     }
 
     static function IsConfigurato() {

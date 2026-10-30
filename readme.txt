@@ -70,6 +70,7 @@ To receive support, contact us at [support@portalefunebre.com](mailto:support@po
 * SEO: Yoast SEO integration (meta, breadcrumbs, schema graph and an obituaries sitemap in the Yoast sitemap index); WordPress core sitemaps are used when Yoast is not active
 * SEO: real 404 status for missing obituaries and temporary 503 status when the portal cannot be reached
 * SEO: periodic update check that refreshes page caches and notifies IndexNow when obituaries change
+* Sharing: share buttons now share the obituary URL directly, which has its own Open Graph tags with the compact photo preview; old /pf-share/ links permanently redirect to the obituary
 * New SEO settings tab with search result preview
 * Local cache of portal data, with a backup copy used when the portal does not respond
 * Advanced condolence form editor

@@ -24,6 +24,9 @@ class PortaleFunebreNecrologi_Monitor {
     const INDEXNOW_ENDPOINT = 'https://api.indexnow.org/indexnow';
     const INDEXNOW_MAX_URL  = 10000;
 
+    /** Immagini per i social preparate a ogni controllo (le altre al giro successivo o alla prima visita). */
+    const IMMAGINI_PER_CONTROLLO = 20;
+
     static function Init() {
         add_filter('cron_schedules', [__CLASS__, 'Intervalli']);
         add_action(self::EVENTO, [__CLASS__, 'Controlla']);
@@ -80,11 +83,14 @@ class PortaleFunebreNecrologi_Monitor {
         $ora      = time();
         $registro = [];
         $cambiati = [];
+        $necrologi = [];
 
         foreach ($lista as $dati) {
             $necro    = new PortaleFunebreNecrologi_Necrologio($dati);
             $slug     = $necro->Slug();
             $impronta = md5(wp_json_encode($dati));
+
+            $necrologi[$slug] = $necro;
 
             if (!isset($prima[$slug])) {
                 $registro[$slug] = ['h' => $impronta, 'c' => $primo ? 0 : $ora, 'm' => $primo ? 0 : $ora];
@@ -103,6 +109,11 @@ class PortaleFunebreNecrologi_Monitor {
 
         $stato              = self::Stato();
         $stato['controllo'] = $ora;
+
+        // Copia ridotta della foto per le anteprime dei social, pronta prima che qualcuno condivida il necrologio.
+        foreach (array_slice($cambiati, 0, self::IMMAGINI_PER_CONTROLLO) as $slug) {
+            $necrologi[$slug]->ImmagineSocial();
+        }
 
         $toccati = array_merge($cambiati, $rimossi);
 

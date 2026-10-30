@@ -35,6 +35,7 @@ class PortaleFunebreNecrologi_Seo_Yoast {
         add_filter('wpseo_opengraph_url', [__CLASS__, 'Canonical'], 20);
         add_filter('wpseo_opengraph_type', [__CLASS__, 'TipoOpenGraph'], 20);
         add_filter('wpseo_add_opengraph_images', [__CLASS__, 'Immagini']);
+        add_filter('wpseo_twitter_card_type', [__CLASS__, 'SchedaTwitter'], 20);
 
         add_filter('wpseo_robots_array', [__CLASS__, 'Robots'], 20);
         add_filter('wpseo_frontend_presenters', [__CLASS__, 'Presenters'], 20);
@@ -58,13 +59,26 @@ class PortaleFunebreNecrologi_Seo_Yoast {
         return PortaleFunebreNecrologi_Seo::IsNecrologio() ? 'article' : $valore;
     }
 
-    /** La foto del defunto viene prima di eventuali immagini della pagina contenitore. */
+    /**
+     * La foto del defunto (copia ridotta, con le sue dimensioni) viene prima
+     * di eventuali immagini della pagina contenitore.
+     */
     static function Immagini($contenitore) {
-        $immagine = PortaleFunebreNecrologi_Seo::Immagine();
+        $immagine = PortaleFunebreNecrologi_Seo::ImmagineSocial();
         if ($immagine && is_object($contenitore) && method_exists($contenitore, 'add_image')) {
-            $contenitore->add_image(['url' => $immagine, 'alt' => PortaleFunebreNecrologi_Render::AltFoto(PortaleFunebreNecrologi_Seo::Corrente())]);
+            $contenitore->add_image([
+                'url'    => $immagine['url'],
+                'width'  => $immagine['width'],
+                'height' => $immagine['height'],
+                'alt'    => PortaleFunebreNecrologi_Render::AltFoto(PortaleFunebreNecrologi_Seo::Corrente()),
+            ]);
         }
         return $contenitore;
+    }
+
+    /** Scheda compatta su X, come quella del vecchio sharer. */
+    static function SchedaTwitter($tipo) {
+        return PortaleFunebreNecrologi_Seo::IsNecrologio() ? 'summary' : $tipo;
     }
 
     /**

@@ -38,10 +38,20 @@ class PortaleFunebreNecrologi_Necrologio {
 
     function Url() { return self::UrlDaSlug($this->Slug()); }
 
-    function UrlCondivisione() { return home_url('/pf-share/' . $this->Slug()); }
-
     function Immagine() {
         return !empty($this->dati->thumbnail) ? PortaleFunebreNecrologi_API::GetImgUrl($this->dati->thumbnail) : '';
+    }
+
+    /**
+     * Immagine per le anteprime dei social: la copia ridotta salvata in
+     * uploads, che fa usare a Facebook la scheda compatta con la foto
+     * verticale a sinistra.
+     *
+     * @return array{url:string,width:int,height:int}|null
+     */
+    function ImmagineSocial() {
+        $immagine = $this->Immagine();
+        return $immagine ? PortaleFunebreNecrologi::GetImmagineShare($immagine) : null;
     }
 
     function Agenzia() {

@@ -673,7 +673,7 @@ jQuery(document).ready(function ($) {
             // Link aggiuntivi e condivisione sono gia' nell'HTML generato lato server.
             if (prerenderizzato) { return; }
 
-            const shareUrl = $post.data('share-url');
+            const shareUrl = encodeURIComponent($post.data('share-url'));
 
             if (cerimonia.lista_links && cerimonia.lista_links.length > 0) {
                 let $cusLinkSec = $post.find('div.custom-links');

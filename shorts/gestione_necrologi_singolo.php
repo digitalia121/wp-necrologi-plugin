@@ -80,7 +80,7 @@ if ($necro) {
   $mostra_btn_pdf    = $canali['pdf'];
   $mostra_invia      = $raccogli_cordogli && !$stato_cordogli['has_nessun_cordoglio'];
   $mostra_mappa      = $necro->Mappa() !== '';
-  $share_url         = rawurlencode($necro->UrlCondivisione());
+  $share_url         = rawurlencode($necro->Url());
 
 } else {
 
@@ -107,7 +107,7 @@ if ($necro) {
   data-pfn-single="1"
   data-slug-necrologio="<?php echo esc_attr($slug_necrologio); ?>"
   data-not-found-url="<?php echo esc_url(get_site_url().'/not-found'); ?>"
-  data-share-url="<?php echo esc_url(get_site_url() . '/pf-share/' . $slug_necrologio); ?>"
+  data-share-url="<?php echo esc_url(PortaleFunebreNecrologi_Necrologio::UrlDaSlug($slug_necrologio)); ?>"
   data-no-popup="<?php echo $mostra_come_popup ? '0' : '1'; ?>">
 
   <?php if ($necro) { ?>
