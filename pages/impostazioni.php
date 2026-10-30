@@ -120,6 +120,15 @@ $sfondo_hero     = isset($impostazioni['sfondo_hero'])       ? $impostazioni['sf
 $defunto_in_hero = (isset($impostazioni['defunto_in_hero'])) ? boolval($impostazioni['defunto_in_hero']) : false;
 $massimizza_foto = (isset($impostazioni['massimizza_foto'])) ? boolval($impostazioni['massimizza_foto']) : false;
 
+// SEO: le opzioni "attive" valgono true anche quando non sono mai state salvate.
+$seo_rendering_server = !(isset($impostazioni['seo_rendering_server']) && $impostazioni['seo_rendering_server'] === '0');
+$seo_schema           = !(isset($impostazioni['seo_schema']) && $impostazioni['seo_schema'] === '0');
+$seo_indexnow         = !(isset($impostazioni['seo_indexnow']) && $impostazioni['seo_indexnow'] === '0');
+$seo_titolo           = isset($impostazioni['seo_titolo'])       ? $impostazioni['seo_titolo'] : '';
+$seo_descrizione      = isset($impostazioni['seo_descrizione'])  ? $impostazioni['seo_descrizione'] : '';
+$seo_pagina_lista     = isset($impostazioni['seo_pagina_lista']) ? absint($impostazioni['seo_pagina_lista']) : 0;
+$seo_cache_minuti     = isset($impostazioni['seo_cache_minuti']) ? absint($impostazioni['seo_cache_minuti']) : PortaleFunebreNecrologi_Repository::DURATA_PREDEFINITA;
+
 
 if (isset($_POST['cambia_impostazioni'])) {
 
@@ -189,6 +198,17 @@ if (isset($_POST['cambia_impostazioni'])) {
     $massimizza_foto = $checkbox('massimizza_foto');
     $single_layout   = $field('single_layout', '1');
 
+    $seo_rendering_server = $checkbox('seo_rendering_server');
+    $seo_schema           = $checkbox('seo_schema');
+    $seo_indexnow         = $checkbox('seo_indexnow');
+    $seo_titolo           = $field('seo_titolo');
+    $seo_descrizione      = $field('seo_descrizione');
+    $seo_pagina_lista     = absint($field('seo_pagina_lista'));
+    $seo_cache_minuti     = absint($field('seo_cache_minuti', (string) PortaleFunebreNecrologi_Repository::DURATA_PREDEFINITA));
+    if (!in_array($seo_cache_minuti, PortaleFunebreNecrologi_Repository::DURATE, true)) {
+        $seo_cache_minuti = PortaleFunebreNecrologi_Repository::DURATA_PREDEFINITA;
+    }
+
     $impostazioni['tipo_visualizzazione'] = $tipo_vis;
     
     $impostazioni['slide_res_desktop']     = $slide_res_desktop;
@@ -232,6 +252,19 @@ if (isset($_POST['cambia_impostazioni'])) {
     $impostazioni['massimizza_foto'] = $massimizza_foto;
     $impostazioni['eta_su_singolo']  = $eta_su_singolo;
 
+    $impostazioni['seo_rendering_server'] = $seo_rendering_server;
+    $impostazioni['seo_schema']           = $seo_schema;
+    $impostazioni['seo_indexnow']         = $seo_indexnow;
+    $impostazioni['seo_titolo']           = $seo_titolo;
+    $impostazioni['seo_descrizione']      = $seo_descrizione;
+    $impostazioni['seo_pagina_lista']     = $seo_pagina_lista;
+    $impostazioni['seo_cache_minuti']     = $seo_cache_minuti;
+
+    // Per i valori mostrati qui sotto, dopo il salvataggio.
+    $seo_rendering_server = $seo_rendering_server === '1';
+    $seo_schema           = $seo_schema === '1';
+    $seo_indexnow         = $seo_indexnow === '1';
+
     // Senza JavaScript l'editor non compila il campo: in quel caso si mantiene la configurazione esistente.
     if (!empty($posted['form_cordoglio']) && is_string($posted['form_cordoglio'])) {
         $form_inviato = json_decode($posted['form_cordoglio'], true);
@@ -249,10 +282,14 @@ if (isset($_POST['cambia_impostazioni'])) {
     - Mostra con Bottone
 
     */
-    add_rewrite_rule('^'.$slug_singolo.'/([^/]+)?', 'index.php?necro_slug=$matches[1]', 'top');
+    PortaleFunebreNecrologi_Seo::AggiungiRegola($slug_singolo);
     flush_rewrite_rules(  );
 
     $impostazioni->Salva();
+
+    // Le pagine dei necrologi dipendono dalle impostazioni: si rigenerano con i nuovi valori.
+    PortaleFunebreNecrologi_Repository::SvuotaCache();
+    PortaleFunebreNecrologi_Sitemap::SvuotaPagine();
 
 }
 
@@ -270,6 +307,71 @@ $form_editor = [
     ],
 ];
 
+/* Tab SEO: stato dell'integrazione e dati di esempio per l'anteprima del risultato di ricerca. */
+
+$seo_stato = [];
+
+if (PortaleFunebreNecrologi_Seo_Yoast::IsAttivo()) {
+    $seo_stato[] = ['ok', 'Yoast SEO ' . WPSEO_VERSION . ' attivo: titolo, description, canonical, Open Graph e dati strutturati dei necrologi passano da Yoast.'];
+} else {
+    $altro_seo = '';
+    foreach (['RANK_MATH_VERSION' => 'Rank Math', 'AIOSEO_VERSION' => 'All in One SEO', 'SEOPRESS_VERSION' => 'SEOPress', 'THE_SEO_FRAMEWORK_VERSION' => 'The SEO Framework'] as $costante => $nome_plugin) {
+        if (defined($costante)) { $altro_seo = $nome_plugin; }
+    }
+    $seo_stato[] = $altro_seo
+        ? ['warn', $altro_seo . ' non è supportato: i meta dei necrologi vengono stampati dal plugin e potrebbero sovrapporsi a quelli di ' . $altro_seo . '. Consigliato Yoast SEO.']
+        : ['ok', 'Nessun plugin SEO attivo: titolo, description, canonical, Open Graph e dati strutturati dei necrologi vengono stampati dal plugin.'];
+}
+
+if (!get_option('blog_public')) {
+    $seo_stato[] = ['warn', 'Il sito chiede ai motori di ricerca di non indicizzarlo (Impostazioni › Lettura): i necrologi non compariranno su Google finché resta attivo.'];
+}
+
+$seo_contenitore = get_page_by_path($slug_singolo, OBJECT, 'page');
+$seo_stato[]     = $seo_contenitore
+    ? ['ok', 'Pagina dei necrologi: «' . get_the_title($seo_contenitore) . '» (/' . $slug_singolo . '/).']
+    : ['err', 'Non esiste una pagina con slug «' . $slug_singolo . '»: crea una pagina con questo slug e lo shortcode [gestione_necrologi_singolo], altrimenti i necrologi rispondono 404.'];
+
+if (PortaleFunebreNecrologi_Seo_Yoast::IsAttivo()) {
+    $seo_sitemap = !empty($GLOBALS['wpseo_sitemaps']) ? home_url('/' . PortaleFunebreNecrologi_Sitemap::NOME . '-sitemap.xml') : '';
+    $seo_stato[] = $seo_sitemap
+        ? ['ok', 'Sitemap dei necrologi inclusa in quella di Yoast:', $seo_sitemap]
+        : ['warn', 'Le sitemap XML di Yoast sono disattivate (Yoast SEO › Impostazioni › Funzionalità del sito): i necrologi non sono in sitemap.'];
+} elseif (function_exists('wp_sitemaps_get_server') && wp_sitemaps_get_server()->sitemaps_enabled()) {
+    $seo_stato[] = ['ok', 'Sitemap dei necrologi inclusa in quella di WordPress:', home_url('/wp-sitemap-' . PortaleFunebreNecrologi_Sitemap::NOME . '-1.xml')];
+} else {
+    $seo_stato[] = ['warn', 'Le sitemap di WordPress sono disattivate: i necrologi non sono in sitemap.'];
+}
+
+$seo_monitor = PortaleFunebreNecrologi_Monitor::Stato();
+$seo_stato[] = !empty($seo_monitor['controllo'])
+    ? ['ok', 'Ultimo controllo degli aggiornamenti dal portale: ' . wp_date('j F Y, H:i', $seo_monitor['controllo']) . '.']
+    : ['warn', 'Il controllo degli aggiornamenti dal portale (ogni 15 minuti) non è ancora stato eseguito.'];
+
+if (!empty($seo_monitor['indexnow'])) {
+    $seo_stato[] = ['ok', 'Ultimo invio a IndexNow: ' . wp_date('j F Y, H:i', $seo_monitor['indexnow']) . ' (' . (int) $seo_monitor['indexnow_url'] . ' URL, esito ' . $seo_monitor['indexnow_esito'] . ').'];
+}
+
+// Necrologio di esempio per l'anteprima: il piu' recente, altrimenti un esempio fittizio.
+$seo_lista   = PortaleFunebreNecrologi::IsConfigurato() ? PortaleFunebreNecrologi_Render::Necrologi() : null;
+$seo_esempio = $seo_lista ? $seo_lista[0] : new PortaleFunebreNecrologi_Necrologio((object) [
+    'nome_defunto' => 'Mario Rossi',
+    'slug'         => 'mario-rossi',
+    'testo'        => 'È mancato all\'affetto dei suoi cari Mario Rossi. Ne danno il triste annuncio la moglie, i figli e i nipoti.',
+    'dati_defunto' => (object) ['data_nascita' => '1940-03-12', 'data_morte' => wp_date('Y-m-d')],
+    'funerale'     => (object) ['luogo' => 'Chiesa parrocchiale', 'data' => wp_date('Y-m-d', time() + 2 * DAY_IN_SECONDS)],
+]);
+
+$seo_anteprima = [
+    'valori'   => [],
+    'url'      => $seo_esempio->Url(),
+    'titolo'   => PortaleFunebreNecrologi_Seo::TITOLO_PREDEFINITO,
+    'max_desc' => PortaleFunebreNecrologi_Seo::LUNGHEZZA_DESCRIZIONE,
+];
+foreach (array_keys(PortaleFunebreNecrologi_Seo::SEGNAPOSTO) as $segnaposto) {
+    $seo_anteprima['valori'][$segnaposto] = PortaleFunebreNecrologi_Seo::Sostituisci($segnaposto, $seo_esempio);
+}
+
 ?>
 
 <form method="POST">
@@ -282,6 +384,7 @@ $form_editor = [
             <a class="privacy-settings-tab" to="lista">Lista Necrologi</a>
             <a class="privacy-settings-tab" to="singolo">Necrologio singolo</a>
             <a class="privacy-settings-tab" to="form"<?php if ($modalita_form === 'nessuna') { echo ' hidden'; } ?>>Form di cordoglio</a>
+            <a class="privacy-settings-tab" to="seo">SEO</a>
             <a class="privacy-settings-tab" to="integrazione">Integrazione API</a>
         </nav>
 
@@ -628,6 +731,95 @@ $form_editor = [
                 <p class="pfn-fe-noscript">Caricamento dell'editor del form&hellip;</p>
             </div>
             <input type="hidden" name="form_cordoglio" id="pfn-form-config" value=""/>
+        </content>
+
+        <content tab="seo">
+
+            <h3>Stato dell'indicizzazione</h3>
+
+            <ul class="pfn-seo-stato">
+                <?php foreach ($seo_stato as $riga) { ?>
+                    <li class="is-<?php echo esc_attr($riga[0]); ?>">
+                        <?php echo esc_html($riga[1]); ?>
+                        <?php if (!empty($riga[2])) { ?> <a href="<?php echo esc_url($riga[2]); ?>" target="_blank" rel="noopener"><?php echo esc_html($riga[2]); ?></a><?php } ?>
+                    </li>
+                <?php } ?>
+            </ul>
+
+            <h3>Come appare nei risultati di ricerca</h3>
+
+            <div class="dgplugin-input-wrap pfn-seo-wide">
+                <label for="seo_titolo">Modello del titolo</label>
+                <input type="text" name="seo_titolo" id="seo_titolo" value="<?php echo esc_attr($seo_titolo); ?>" placeholder="<?php echo esc_attr(PortaleFunebreNecrologi_Seo::TITOLO_PREDEFINITO); ?>"/>
+                <span class="pfn-seo-hint">Vuoto = <code><?php echo esc_html(PortaleFunebreNecrologi_Seo::TITOLO_PREDEFINITO); ?></code>. Inserire il paese (es. <code>{nome} - Necrologio {luogo_funerale}</code>) aiuta chi cerca "nome + paese".</span>
+            </div>
+
+            <div class="dgplugin-input-wrap pfn-seo-wide">
+                <label for="seo_descrizione">Modello della description</label>
+                <input type="text" name="seo_descrizione" id="seo_descrizione" value="<?php echo esc_attr($seo_descrizione); ?>" placeholder="Automatica: l'inizio del testo del necrologio"/>
+                <span class="pfn-seo-hint">Vuoto = i primi <?php echo (int) PortaleFunebreNecrologi_Seo::LUNGHEZZA_DESCRIZIONE; ?> caratteri del testo del necrologio.</span>
+            </div>
+
+            <div class="dgplugin-input-wrap pfn-seo-wide">
+                <label>Segnaposto disponibili <span class="pfn-seo-hint-inline">(clic per inserirli nel campo selezionato)</span></label>
+                <div class="pfn-seo-chips">
+                    <?php foreach (PortaleFunebreNecrologi_Seo::SEGNAPOSTO as $segnaposto => $descrizione_segnaposto) { ?>
+                        <button type="button" class="pfn-seo-chip" data-segnaposto="<?php echo esc_attr($segnaposto); ?>" title="<?php echo esc_attr($descrizione_segnaposto); ?>"><?php echo esc_html($segnaposto); ?></button>
+                    <?php } ?>
+                </div>
+            </div>
+
+            <div class="pfn-seo-anteprima" data-anteprima="<?php echo esc_attr(wp_json_encode($seo_anteprima)); ?>">
+                <span class="pfn-seo-anteprima-etichetta">Anteprima su Google<?php echo $seo_lista ? ' &middot; ' . esc_html($seo_esempio->Nome()) : ' &middot; esempio'; ?></span>
+                <span class="pfn-seo-anteprima-url"><?php echo esc_html($seo_esempio->Url()); ?></span>
+                <span class="pfn-seo-anteprima-titolo"></span>
+                <span class="pfn-seo-anteprima-desc"></span>
+            </div>
+
+            <h3>Pagine e aggiornamenti</h3>
+
+            <div class="dgplugin-input-wrap">
+                <label for="seo_pagina_lista">Pagina con la lista dei necrologi</label>
+                <?php
+                wp_dropdown_pages([
+                    'name'              => 'seo_pagina_lista',
+                    'id'                => 'seo_pagina_lista',
+                    'selected'          => $seo_pagina_lista, // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+                    'show_option_none'  => 'Rilevamento automatico',
+                    'option_none_value' => '0',
+                ]);
+                ?>
+                <span class="pfn-seo-hint">Usata nelle breadcrumb (Home › Necrologi › Nome).</span>
+            </div>
+
+            <div class="dgplugin-input-wrap">
+                <label for="seo_cache_minuti">Aggiornamento dei dati dal portale</label>
+                <select name="seo_cache_minuti" id="seo_cache_minuti">
+                    <?php foreach (PortaleFunebreNecrologi_Repository::DURATE as $minuti) { ?>
+                        <option <?php if ($minuti === $seo_cache_minuti) { echo 'selected'; } ?> value="<?php echo esc_attr($minuti); ?>">Ogni <?php echo esc_html($minuti); ?> minuti</option>
+                    <?php } ?>
+                </select>
+                <span class="pfn-seo-hint">Durata della copia locale dei necrologi. Al salvataggio viene rinnovata.</span>
+            </div>
+
+            <div class="dgplugin-input-wrap">
+                <label>Dati strutturati</label>
+                <p>Defunto e funerale in schema.org <input name="seo_schema" type="checkbox"<?php checked($seo_schema); ?>/></p>
+            </div>
+
+            <div class="dgplugin-input-wrap">
+                <label>IndexNow</label>
+                <p>Segnala subito i necrologi a Bing <input name="seo_indexnow" type="checkbox"<?php checked($seo_indexnow); ?>/></p>
+            </div>
+
+            <h3>Compatibilità</h3>
+
+            <div class="dgplugin-input-wrap pfn-seo-wide">
+                <label>Rendering lato server</label>
+                <p>Inserisci i necrologi direttamente nell'HTML della pagina (consigliato) <input name="seo_rendering_server" type="checkbox"<?php checked($seo_rendering_server); ?>/></p>
+                <span class="pfn-seo-hint">Disattivalo solo se il tema mostra i necrologi in modo diverso dal solito: le pagine torneranno a caricarsi via JavaScript, ma titolo, canonical, sitemap e codici di risposta restano corretti.</span>
+            </div>
+
         </content>
 
         <content tab="integrazione">

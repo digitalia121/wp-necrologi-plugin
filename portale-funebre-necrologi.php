@@ -2,7 +2,7 @@
 Plugin Name: Portale Funebre Necrologi
 Plugin URI: http://www.portalefunebre.com
 Description: Gestione dei necrologi sul tuo sito.
-Version: 1.0.5
+Version: 1.1.0
 Author: Digitalia Srl
 Author URI: https://digitalia.srl
 License: GPL2
@@ -19,6 +19,16 @@ if (!class_exists('PortaleFunebreNecrologi_API')) {
 }
 
 require_once plugin_dir_path(__FILE__) . 'inc/form_cordoglio.php';
+require_once plugin_dir_path(__FILE__) . 'inc/necrologi_repository.php';
+require_once plugin_dir_path(__FILE__) . 'inc/necrologio.php';
+require_once plugin_dir_path(__FILE__) . 'inc/render.php';
+require_once plugin_dir_path(__FILE__) . 'inc/seo/seo.php';
+require_once plugin_dir_path(__FILE__) . 'inc/seo/yoast.php';
+require_once plugin_dir_path(__FILE__) . 'inc/seo/schema.php';
+require_once plugin_dir_path(__FILE__) . 'inc/seo/sitemap.php';
+require_once plugin_dir_path(__FILE__) . 'inc/seo/monitor.php';
+
+register_deactivation_hook(__FILE__, ['PortaleFunebreNecrologi_Monitor', 'Disattiva']);
 
 // Editor del form di cordoglio: solo nella pagina Impostazioni del plugin.
 add_action('admin_enqueue_scripts', function ($hook) {
@@ -95,7 +105,7 @@ class PortaleFunebreNecrologi extends PortaleFunebreNecrologi\PluginBase {
                 'index.php?pf_share_slug=$matches[1]',
                 'top'
             );
-            add_rewrite_rule('^'.$slug_singolo.'/([^/]+)?', 'index.php?necro_slug=$matches[1]', 'top');
+            PortaleFunebreNecrologi_Seo::AggiungiRegola($slug_singolo);
         });
         add_filter('query_vars', function($vars) {
             $vars[] = 'pf_share_slug';
@@ -104,54 +114,27 @@ class PortaleFunebreNecrologi extends PortaleFunebreNecrologi\PluginBase {
         });
 
         if (PortaleFunebreNecrologi::IsConfigurato()) {
-            add_action('template_redirect', function() use ($slug_singolo)  {
-                
-                $slug = get_query_var('necro_slug');
-                
-                if (!$slug) { return; }
 
-                $post = get_page_by_path($slug_singolo, OBJECT, 'page'); // oppure 'post' se cerchi tra i post
+            // Pagina del singolo necrologio: routing, codici di risposta, meta SEO e sitemap.
+            PortaleFunebreNecrologi_Seo::Init();
+            PortaleFunebreNecrologi_Monitor::Init();
 
-                if ($post) {
-                    
-                    setup_postdata($post);
-                    
-                    // imposta globali per far credere a WP che siamo su quella pagina
-                    global $wp_query;
-
-                    $wp_query->post    = $post;
-                    $wp_query->posts   = [$post];
-                    $wp_query->is_page = true;
-                    $wp_query->is_singular = true;
-                    $wp_query->is_home = false;
-                    $wp_query->is_404  = false;
-
-                    $template = get_single_template();
-
-                    if (!$template) { $template = get_page_template(); }
-
-                    if ($template) {
-                        include(get_single_template());
-                        exit;
-                    }
-                    
-                } else {
-                    // fallback se non trova nulla
-                    wp_die('Pagina non trovata', 'Errore 404', ['response' => 404]);
-                }
-            });
             add_action('template_redirect', function () {
 
-                $slug = get_query_var('pf_share_slug');
+                $slug = sanitize_title((string) get_query_var('pf_share_slug'));
                 if (!$slug) return;
 
                 remove_all_actions('wpseo_head');
 
-                $api  = new PortaleFunebreNecrologi_API();
-                $data = $api->TrovaNecrologioSingolo($slug);
+                $data = PortaleFunebreNecrologi_Repository::GetSingolo($slug);
 
-                if (!$data || (empty($data))) {
-                    wp_die('Not found');
+                if (is_wp_error($data)) {
+                    header('Retry-After: 600');
+                    wp_die('Necrologio temporaneamente non disponibile', 'Necrologio', ['response' => 503]);
+                }
+
+                if (!$data) {
+                    wp_die('Not found', 'Not found', ['response' => 404]);
                 }
 
                 $agenzia = (isset($data->agenzia)) ? $data->agenzia : (object)['ragione_sociale' => 'Onoranze Funebri', 'partita_iva'=> ''];
@@ -165,7 +148,7 @@ class PortaleFunebreNecrologi extends PortaleFunebreNecrologi\PluginBase {
                     $desc = 'E\' mancato/a all\'affetto dei suoi cari '.$data->nome_defunto;
                 }
                 $url      = home_url('/pf-share/'.$slug);
-                $real_url = esc_url(home_url('/'.self::$IMPOSTAZIONI['slug_singolo'].'/'.$slug));
+                $real_url = PortaleFunebreNecrologi_Necrologio::UrlDaSlug($slug);
 
                 // Copia ridotta dell'immagine: serve a far usare a Facebook la
                 // scheda compatta, con la foto verticale sulla sinistra.
@@ -202,6 +185,7 @@ class PortaleFunebreNecrologi extends PortaleFunebreNecrologi\PluginBase {
 
                         <meta name="msapplication-TileImage" content="<?php echo esc_url($img); ?>">
                         <meta name="robots" content="noindex, nofollow">
+                        <link rel="canonical" href="<?php echo esc_url($real_url); ?>" />
                     </head>
                     <body>
                         <h1><?php echo esc_attr($title); ?></h1>
@@ -376,21 +360,23 @@ class PortaleFunebreNecrologi extends PortaleFunebreNecrologi\PluginBase {
 
 }
 
+// Letture via ajax: servono solo come ripiego quando il markup non e' generato lato server.
 PortaleFunebreNecrologi::add_ajax_call('get_necrologio_singolo', function ($var) {
     if (!PortaleFunebreNecrologi::$inInst) { return; }
     $slug = isset($var['slug']) ? sanitize_title($var['slug']) : '';
-    $api = new PortaleFunebreNecrologi_API();
-    return $api->TrovaNecrologioSingolo($slug);
+    $dati = PortaleFunebreNecrologi_Repository::GetSingolo($slug);
+    return is_object($dati) ? $dati : null;
 });
 PortaleFunebreNecrologi::add_ajax_call('get_lista_necrologi', function () {
     if (!PortaleFunebreNecrologi::$inInst) { return; }
-    $api = new PortaleFunebreNecrologi_API();
-    return $api->TrovaTuttiNecrologi();
+    $lista = PortaleFunebreNecrologi_Repository::GetLista();
+    return is_wp_error($lista) ? [] : $lista;
 });
 PortaleFunebreNecrologi::add_ajax_call('get_anteprima_necrologi', function () {
     if (!PortaleFunebreNecrologi::$inInst) { return; }
-    $api = new PortaleFunebreNecrologi_API();
-    return $api->TrovaTuttiNecrologi(10);
+    // Lo slider ha sempre ricevuto tutti i necrologi: stessa lista (e stessa cache) della lista.
+    $lista = PortaleFunebreNecrologi_Repository::GetLista();
+    return is_wp_error($lista) ? [] : $lista;
 });
 PortaleFunebreNecrologi::add_ajax_call('invia_cordoglio_api', function ($var) {
     if (!PortaleFunebreNecrologi::$inInst) { return; }
@@ -421,8 +407,16 @@ unset($necro_settings_array['form_cordoglio']); // il form viene renderizzato la
 PortaleFunebreNecrologi\PluginBase::add_js_variables([
     'necro_settings' => $necro_settings_array,
     'necro_img_url'  => PortaleFunebreNecrologi_API::GetImgUrl(''),
-    'necrologio_url' => get_site_url().'/'.PortaleFunebreNecrologi::GetImpostazioni()['slug_singolo']
+    'necrologio_url' => get_site_url().'/'.PortaleFunebreNecrologi::GetImpostazioni()['slug_singolo'],
 ]);
+
+// URL canonico del necrologio (%slug% viene sostituito) per i link generati in JavaScript.
+// Calcolato qui perche' i permalink sono disponibili solo dopo l'avvio di WordPress.
+add_action('wp_enqueue_scripts', function () {
+    PortaleFunebreNecrologi\PluginBase::add_js_variables([
+        'necrologio_url_modello' => PortaleFunebreNecrologi_Necrologio::ModelloUrl(),
+    ]);
+}, 5);
 
 function portale_funebre_necrologi_num_cols() {
     $num_cols = PortaleFunebreNecrologi::GetImpostazioni()['num_cols'];

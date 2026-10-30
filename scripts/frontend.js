@@ -37,7 +37,9 @@ window.DgNecrologi = new function () {
 
     let get_img_url = function (img_name) { return DgPlugin.get_var('necro_img_url')+img_name; };
     let get_necro_url = function (necro_slug) {
-        let single = DgNecrologi.slugs.slug_singolo;
+        // Stesso URL canonico generato lato server.
+        let modello = DgPlugin.get_var('necrologio_url_modello');
+        if (modello) { return modello.replace('%slug%', encodeURIComponent(necro_slug)); }
         return DgPlugin.get_var('necrologio_url')+'/'+necro_slug;
     };
 
@@ -313,32 +315,8 @@ window.DgNecrologi = new function () {
 
         }
 
-        let mono      = (necro.cordogli.whatsapp ^ necro.cordogli.email ^ necro.cordogli.pdf) ? true : false;
-        let nessuno   = !necro.cordogli.whatsapp && !necro.cordogli.email && !necro.cordogli.pdf;
-        let tipo_mono = '';
-
-        if (mono) {
-            if (necro.cordogli.email) { tipo_mono = 'email'; }
-            if (necro.cordogli.pdf) { tipo_mono = 'pdf'; }
-            if (necro.cordogli.whatsapp) { tipo_mono = 'whatsapp'; }
-        } else {
-            tipo_mono = 'pdf';
-            mono      = true;
-            nessuno   = false;
-        }
-
-        singolo.is_mono              = mono;
-        singolo.mono_tipo            = tipo_mono;
-        singolo.has_nessun_cordoglio = nessuno;
-
-        if (settings.mostra_donazioni) {
-            let donacode = scheda_donazioni(necro.donazioni);
-            if (donacode) {
-                sezioneDona.innerHTML = donacode;
-            } else {
-                sezioneDona.remove();
-            }
-        }
+        DgNecrologi.stato_cordogli(necro);
+        DgNecrologi.riempi_donazioni(sezioneDona, necro);
 
         if (nomeDefunto) {
             nomeDefunto.innerText = titolo_cerimonia;
@@ -360,7 +338,42 @@ window.DgNecrologi = new function () {
         if (sluggerInput) { sluggerInput.value = necro.slug; }
 
         return singolo;
-        
+
+    };
+
+    // Quale form di cordoglio aprire, in base ai canali abilitati sul portale.
+    this.stato_cordogli = function (necro) {
+
+        let mono      = (necro.cordogli.whatsapp ^ necro.cordogli.email ^ necro.cordogli.pdf) ? true : false;
+        let nessuno   = !necro.cordogli.whatsapp && !necro.cordogli.email && !necro.cordogli.pdf;
+        let tipo_mono = '';
+
+        if (mono) {
+            if (necro.cordogli.email) { tipo_mono = 'email'; }
+            if (necro.cordogli.pdf) { tipo_mono = 'pdf'; }
+            if (necro.cordogli.whatsapp) { tipo_mono = 'whatsapp'; }
+        } else {
+            tipo_mono = 'pdf';
+            mono      = true;
+            nessuno   = false;
+        }
+
+        singolo.is_mono              = mono;
+        singolo.mono_tipo            = tipo_mono;
+        singolo.has_nessun_cordoglio = nessuno;
+
+        return singolo;
+    };
+
+    // La scheda donazioni viene sempre inserita dal JavaScript: l'IBAN non e' nell'HTML indicizzabile.
+    this.riempi_donazioni = function (sezioneDona, necro) {
+        if (!sezioneDona || !settings.mostra_donazioni) { return; }
+        let donacode = necro.donazioni ? scheda_donazioni(necro.donazioni) : '';
+        if (donacode) {
+            sezioneDona.innerHTML = donacode;
+        } else {
+            sezioneDona.remove();
+        }
     };
 
 
@@ -485,16 +498,19 @@ jQuery(document).ready(function ($) {
             slug_singolo: $looper.data('slug-singolo')
         };
 
-        DgPlugin.ajax('get_lista_necrologi', function (cerimonie) {
-            cerimonie = DgNecrologi.ordina_necrologi_lista(cerimonie);
-            for (let i in cerimonie) {
-                if (cerimonie[i].nome_defunto) {
-                    let n_div = DgNecrologi.crea_necrologio_loop(cerimonie[i]);
-                    $looper.append(n_div);
+        // Box gia' generati lato server: non serve caricarli.
+        if ($looper.attr('data-pfn-rendered') !== '1') {
+            DgPlugin.ajax('get_lista_necrologi', function (cerimonie) {
+                cerimonie = DgNecrologi.ordina_necrologi_lista(cerimonie);
+                for (let i in cerimonie) {
+                    if (cerimonie[i].nome_defunto) {
+                        let n_div = DgNecrologi.crea_necrologio_loop(cerimonie[i]);
+                        $looper.append(n_div);
+                    }
                 }
-            }
-            $loader.css({display: 'none'});
-        });
+                $loader.css({display: 'none'});
+            });
+        }
 
         if ($looper.data('tipo-vis') === 'grid' && $looper.hasClass('slider') && typeof $looper.slick === 'function') {
             $looper.slick({
@@ -525,13 +541,7 @@ jQuery(document).ready(function ($) {
             slug_singolo: $looper.data('slug-singolo')
         };
 
-        DgPlugin.ajax('get_anteprima_necrologi', function (cerimonie) {
-            for (let i in cerimonie) {
-                if (cerimonie[i].nome_defunto) {
-                    let n_div = DgNecrologi.crea_necrologio_slide(cerimonie[i]);
-                    $looper.append(n_div);
-                }
-            }
+        let avvia_slider = function () {
 
             $loader.css({display: 'none'});
 
@@ -552,6 +562,22 @@ jQuery(document).ready(function ($) {
                     ]
                 });
             }
+        };
+
+        // Slide gia' generate lato server: si avvia direttamente lo slider.
+        if ($looper.attr('data-pfn-rendered') === '1') {
+            avvia_slider();
+            return;
+        }
+
+        DgPlugin.ajax('get_anteprima_necrologi', function (cerimonie) {
+            for (let i in cerimonie) {
+                if (cerimonie[i].nome_defunto) {
+                    let n_div = DgNecrologi.crea_necrologio_slide(cerimonie[i]);
+                    $looper.append(n_div);
+                }
+            }
+            avvia_slider();
         });
     });
 
@@ -562,22 +588,26 @@ jQuery(document).ready(function ($) {
         let slug = $post.data('slug-necrologio');
         let noPopUp = $post.data('no-popup') == 1;
 
-        DgPlugin.ajax('get_necrologio_singolo', function (cerimonia) {
-            if (!cerimonia) {
-                window.location = $post.data('not-found-url');
-                return;
-            }
-
-            let agenzia = 'Onoranze Funebri';
-
-            if (cerimonia.agenzia && cerimonia.agenzia.ragione_sociale) {
-                agenzia = cerimonia.agenzia.ragione_sociale;
-            }
-
-            document.title = cerimonia.nome_defunto + ' - ' + agenzia;
+        // prerenderizzato: contenuto gia' generato lato server, qui si attivano solo le parti interattive.
+        let attiva_necrologio = function (cerimonia, prerenderizzato) {
 
             let $formCord = $post.find('.cordo-form-wrapper');
-            let dati_necro = DgNecrologi.crea_necrologio_singolo(cerimonia);
+            let dati_necro;
+
+            if (prerenderizzato) {
+                dati_necro = DgNecrologi.stato_cordogli(cerimonia);
+                DgNecrologi.riempi_donazioni($post.find('.sezione-donazioni').get(0), cerimonia);
+            } else {
+                let agenzia = 'Onoranze Funebri';
+
+                if (cerimonia.agenzia && cerimonia.agenzia.ragione_sociale) {
+                    agenzia = cerimonia.agenzia.ragione_sociale;
+                }
+
+                document.title = cerimonia.nome_defunto + ' - ' + agenzia;
+
+                dati_necro = DgNecrologi.crea_necrologio_singolo(cerimonia);
+            }
 
             if (noPopUp) {
                 $formCord.attr('active', dati_necro.mono_tipo);
@@ -640,6 +670,9 @@ jQuery(document).ready(function ($) {
 
             $post.fadeIn();
 
+            // Link aggiuntivi e condivisione sono gia' nell'HTML generato lato server.
+            if (prerenderizzato) { return; }
+
             const shareUrl = $post.data('share-url');
 
             if (cerimonia.lista_links && cerimonia.lista_links.length > 0) {
@@ -656,6 +689,25 @@ jQuery(document).ready(function ($) {
                 $post.find('.share-on.wa').attr('href', `https://wa.me/?text=${shareUrl}`);
                 $post.find('.share-on.tw').attr('href', `https://x.com/intent/post?text=${shareUrl}`);
             });
+        };
+
+        let datiPagina = $post.find('script.pfn-necrologio-dati').first();
+
+        if (datiPagina.length) {
+            let dati = null;
+            try { dati = JSON.parse(datiPagina.text()); } catch (e) { dati = null; }
+            if (dati) {
+                attiva_necrologio(dati, true);
+                return;
+            }
+        }
+
+        DgPlugin.ajax('get_necrologio_singolo', function (cerimonia) {
+            if (!cerimonia) {
+                window.location = $post.data('not-found-url');
+                return;
+            }
+            attiva_necrologio(cerimonia, false);
         }, { slug: slug });
     });
 

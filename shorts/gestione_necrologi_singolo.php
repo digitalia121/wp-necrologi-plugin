@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 if (!defined('ABSPATH')) { exit; }
 
@@ -7,14 +7,9 @@ if (!PortaleFunebreNecrologi::IsConfigurato()) {  echo 'necrologio'; return; }
 $impostazioni = PortaleFunebreNecrologi::GetImpostazioni();
 
 $slug_singolo    = (isset($impostazioni['slug_singolo']))  ? $impostazioni['slug_singolo'] : 'necrologio';
-$slug_necrologio = get_query_var('necro_slug');
+$slug_necrologio = sanitize_title((string) get_query_var('necro_slug'));
 
 $massimizza_foto = (isset($impostazioni['massimizza_foto']))  ? boolval($impostazioni['massimizza_foto']) : false;
-
-add_filter( 'pre_get_document_title', function( $title ) use ($slug_necrologio) { 
-  $strings = explode('-',$slug_necrologio);
-  return ucfirst($strings[0]).' '.ucfirst($strings[1]).' - '.get_bloginfo( 'name' );
-});
 
 $colore = (isset($impostazioni['colore_box'])) ? $impostazioni['colore_box'] : '#000000';
 
@@ -25,7 +20,7 @@ if (isset($impostazioni['single_layout'])) {
   if ($tipo == 2) {
     $tipo_layout = 'layout-alt';
   }
-  
+
 }
 
 $share_on_fb     = (isset($impostazioni['share_on_fb']))     ? boolval($impostazioni['share_on_fb']) : false;
@@ -40,7 +35,7 @@ $modalita_form     = PortaleFunebreNecrologi_FormCordoglio::Modalita($impostazio
 $mostra_come_popup = $modalita_form === 'popup';
 $raccogli_cordogli = $modalita_form !== 'nessuna';
 
-if (!$mostra_come_popup) { 
+if (!$mostra_come_popup) {
   $classes .= ' no-popup';
 }
 if ($massimizza_foto) {
@@ -57,74 +52,121 @@ if (isset($impostazioni['sfondo_hero']) && $impostazioni['sfondo_hero']) {
   $bg_url = wp_get_attachment_url($impostazioni['sfondo_hero']);
 }
 $defunto_in_hero = (isset($impostazioni['defunto_in_hero'])) ? boolval($impostazioni['defunto_in_hero']) : false;
+$hero_visibile   = $titolo_hero || $testo_hero;
 
 $form_cordoglio = PortaleFunebreNecrologi_FormCordoglio::GetConfig($impostazioni);
 $testi_form     = $form_cordoglio['texts'];
 
+/*
+ * Con il rendering lato server il necrologio arriva gia' compilato nell'HTML
+ * (leggibile dai motori di ricerca). Altrimenti, come in passato, la pagina
+ * viene riempita dal JavaScript.
+ */
+$necro = (PortaleFunebreNecrologi_Render::IsAttivo() && PortaleFunebreNecrologi_Seo::IsNecrologio()) ? PortaleFunebreNecrologi_Seo::Corrente() : null;
+
+if ($necro) {
+
+  $stato_cordogli = $necro->StatoCordogli();
+  $canali         = $necro->Cordogli();
+  $nome_defunto   = $necro->Nome();
+  $testo_html     = PortaleFunebreNecrologi_Render::EtaSingolo($necro) . $necro->Testo();
+
+  // Il nome va nella hero solo se la hero viene mostrata, altrimenti resta nel contenuto.
+  $nome_in_hero      = $defunto_in_hero && $hero_visibile;
+  $nome_in_contenuto = !$nome_in_hero;
+
+  $mostra_whatsapp   = $canali['whatsapp'];
+  $mostra_btn_email  = $canali['email'];
+  $mostra_btn_pdf    = $canali['pdf'];
+  $mostra_invia      = $raccogli_cordogli && !$stato_cordogli['has_nessun_cordoglio'];
+  $mostra_mappa      = $necro->Mappa() !== '';
+  $share_url         = rawurlencode($necro->UrlCondivisione());
+
+} else {
+
+  $nome_in_hero      = $defunto_in_hero;
+  $nome_in_contenuto = !$defunto_in_hero;
+
+  $mostra_whatsapp   = true;
+  $mostra_btn_email  = true;
+  $mostra_btn_pdf    = true;
+  $mostra_invia      = $raccogli_cordogli;
+  $mostra_mappa      = true;
+
+}
+
 ?>
 
+<?php if (!$necro) { ?>
 <div class="necrologi-loader"><div class="dg_spinner"></div></div>
+<?php } ?>
 
 <div
   class="post-necrologio portale-funebre-post <?php echo esc_attr($classes); ?>"
-  style="display: none"
+  <?php if ($necro) { ?>data-pfn-rendered="1"<?php } else { ?>style="display: none"<?php } ?>
   data-pfn-single="1"
   data-slug-necrologio="<?php echo esc_attr($slug_necrologio); ?>"
   data-not-found-url="<?php echo esc_url(get_site_url().'/not-found'); ?>"
   data-share-url="<?php echo esc_url(get_site_url() . '/pf-share/' . $slug_necrologio); ?>"
   data-no-popup="<?php echo $mostra_come_popup ? '0' : '1'; ?>">
 
+  <?php if ($necro) { ?>
+  <script type="application/json" class="pfn-necrologio-dati"><?php echo wp_json_encode(PortaleFunebreNecrologi_Render::DatiScript($necro), JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE); ?></script>
+  <?php } ?>
 
-  <?php if ($titolo_hero || $testo_hero): ?>
+  <?php if ($hero_visibile): ?>
       <div class="necro-hero-section" style="background-image: url('<?php echo esc_url($bg_url); ?>')">
           <div class="necrohero-inner">
-            <?php if ($titolo_hero): ?><h2 class="titolo-hero"><?php echo esc_html($titolo_hero); ?></h2><?php endif; ?>
+            <?php if ($necro && $nome_in_hero): ?>
+              <h2 class="titolo-hero"><?php echo esc_html($nome_defunto); ?></h2>
+            <?php elseif ($titolo_hero): ?><h2 class="titolo-hero"><?php echo esc_html($titolo_hero); ?></h2><?php endif; ?>
             <?php if ($testo_hero): ?><p><?php echo esc_html($testo_hero); ?></p><?php endif; ?>
           </div>
       </div>
   <?php endif; ?>
 
   <div class="necrologio-wrapper <?php echo esc_attr($tipo_layout); ?>">
-    
+
     <div class="necro-content">
-      
-      <picture></picture>
-      
-      <?php  if (!$defunto_in_hero && $tipo_layout == 'layout-alt') {?>
-        <h1 class="necro-nome-defunto"></h1>
+
+      <picture><?php if ($necro) { echo PortaleFunebreNecrologi_Render::FotoSingolo($necro); } // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Markup costruito con esc_url/esc_attr. ?></picture>
+
+      <?php  if ($nome_in_contenuto && $tipo_layout == 'layout-alt') {?>
+        <h1 class="necro-nome-defunto"><?php if ($necro) { echo esc_html($nome_defunto); } ?></h1>
       <?php } ?>
 
     </div>
-    
-    <?php if (!$massimizza_foto) { ?> 
+
+    <?php if (!$massimizza_foto) { ?>
       <div class="necro-center">
-        
-        <?php if (!$defunto_in_hero && $tipo_layout != 'layout-alt') {?>
-          <h2 class="necro-nome-defunto"></h2>
+
+        <?php if ($nome_in_contenuto && $tipo_layout != 'layout-alt') {?>
+          <h2 class="necro-nome-defunto"><?php if ($necro) { echo esc_html($nome_defunto); } ?></h2>
         <?php } ?>
 
-        <div class="necro-testo"></div>
-        
+        <div class="necro-testo"><?php if ($necro) { echo wp_kses_post($testo_html); } ?></div>
+
       </div>
     <?php } ?>
 
     <div class="necro-dettagli">
-      
+
       <?php if ($massimizza_foto) { ?>
 
-        <?php if (!$defunto_in_hero) {?>
-          <h2 class="necro-nome-defunto"></h2>
+        <?php if ($nome_in_contenuto) {?>
+          <h2 class="necro-nome-defunto"><?php if ($necro) { echo esc_html($nome_defunto); } ?></h2>
         <?php } ?>
 
-        <div class="necro-testo"></div>
-        
+        <div class="necro-testo"><?php if ($necro) { echo wp_kses_post($testo_html); } ?></div>
+
       <?php } ?>
 
       <div class="bottoni-azioni">
 
-        <?php if ($raccogli_cordogli) { ?>
+        <?php if ($mostra_invia) { ?>
           <button class="button invia-cordoglio">Invia un messaggio di cordoglio</button>
         <?php } ?>
+        <?php if ($mostra_whatsapp) { ?>
         <a class="button scrivi-su-whatsapp" href="#" target="_blank">
           <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" id="Layer_1" viewBox="0 0 418.135 418.135" xml:space="preserve">
             <g>
@@ -134,22 +176,23 @@ $testi_form     = $form_cordoglio['texts'];
           </svg>
           <span>Invia cordoglio su whatsapp</span>
         </a>
+        <?php } ?>
 
       </div>
 
-      <div class="custom-links"></div>
-      
+      <div class="custom-links"><?php if ($necro) { echo PortaleFunebreNecrologi_Render::Links($necro); } // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Markup costruito con esc_url/esc_html. ?></div>
 
-      <?php if ($share_on_attivo) { ?> 
+
+      <?php if ($share_on_attivo) { ?>
 
         <div class="social-share">
-          
+
           <h5>CONDIVIDI IL NECROLOGIO</h5>
 
           <div class="shs-icon-wrapper">
 
-            <?php if ($share_on_fb) { ?> 
-              <a class="share-on fb" href="#" target="_blank">
+            <?php if ($share_on_fb) { ?>
+              <a class="share-on fb" href="<?php echo $necro ? esc_url('https://www.facebook.com/sharer/sharer.php?u=' . $share_url) : '#'; ?>" target="_blank">
                 <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <rect width="24" height="24" fill="none"/>
                   <path d="M5,3H19a2,2,0,0,1,2,2V19a2,2,0,0,1-2,2H5a2,2,0,0,1-2-2V5A2,2,0,0,1,5,3M18,5H15.5A3.5,3.5,0,0,0,12,8.5V11H10v3h2v7h3V14h3V11H15V9a1,1,0,0,1,1-1h2Z"/>
@@ -157,16 +200,16 @@ $testi_form     = $form_cordoglio['texts'];
               </a>
             <?php } ?>
 
-            <?php if ($share_on_tw) { ?> 
-              <a class="share-on tw" href="#" target="_blank">
+            <?php if ($share_on_tw) { ?>
+              <a class="share-on tw" href="<?php echo $necro ? esc_url('https://x.com/intent/post?text=' . $share_url) : '#'; ?>" target="_blank">
                 <svg xmlns="http://www.w3.org/2000/svg" shape-rendering="geometricPrecision" text-rendering="geometricPrecision" style="background: #000; margin: 4px" image-rendering="optimizeQuality" fill-rule="evenodd" clip-rule="evenodd" viewBox="0 0 512 509">
                   <rect rx="115.61" ry="115.61"/><path fill="#fff" fill-rule="nonzero" d="M323.74 148.35h36.12l-78.91 90.2 92.83 122.73h-72.69l-56.93-74.43-65.15 74.43h-36.14l84.4-96.47-89.05-116.46h74.53l51.46 68.04 59.53-68.04zm-12.68 191.31h20.02l-129.2-170.82H180.4l130.66 170.82z"/>
                 </svg>
               </a>
             <?php } ?>
 
-            <?php if ($share_on_wa) { ?> 
-              <a class="share-on wa" href="#" data-action="share/whatsapp/share" target="_blank">
+            <?php if ($share_on_wa) { ?>
+              <a class="share-on wa" href="<?php echo $necro ? esc_url('https://wa.me/?text=' . $share_url) : '#'; ?>" data-action="share/whatsapp/share" target="_blank">
                 <svg fill="#000000" version="1.1" id="Icon" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
                     viewBox="0 0 24 24" enable-background="new 0 0 24 24" xml:space="preserve">
                   <g id="WA_Logo">
@@ -185,7 +228,7 @@ $testi_form     = $form_cordoglio['texts'];
                 </svg>
               </a>
             <?php } ?>
-            
+
           </div>
 
         </div>
@@ -197,10 +240,11 @@ $testi_form     = $form_cordoglio['texts'];
   </div>
 
   <div class="sezione-donazioni">
-        
-  </div>
-  
 
+  </div>
+
+
+  <?php if ($mostra_mappa) { ?>
   <div class="necro-mappa">
 
     <h2>LUOGO DELLA CERIMONIA</h2>
@@ -208,24 +252,26 @@ $testi_form     = $form_cordoglio['texts'];
     <div class="mappa-cerimonia" id="cerimoniaMap"></div>
 
   </div>
+  <?php } ?>
 
   <?php if ($raccogli_cordogli) { ?>
   <div
     class="cordo-form-wrapper <?php echo esc_attr(PortaleFunebreNecrologi_FormCordoglio::ClassiCss($form_cordoglio)); ?>"
     id="form-di-cordoglio"
+    <?php if ($necro && !$mostra_come_popup) { ?>active="<?php echo esc_attr($stato_cordogli['mono_tipo']); ?>"<?php } ?>
     style="<?php echo esc_attr(PortaleFunebreNecrologi_FormCordoglio::VariabiliCss($form_cordoglio)); ?>">
 
     <div class="form-container">
 
       <div class="form-buttons">
-        <button class="manda-con-email"><?php echo esc_html($testi_form['btn_email']); ?></button>
-        <button class="manda-con-whatsapp"><?php echo esc_html($testi_form['btn_whatsapp']); ?></button>
-        <button class="manda-con-pdf"><?php echo esc_html($testi_form['btn_pdf']); ?></button>
+        <?php if ($mostra_btn_email) { ?><button class="manda-con-email"><?php echo esc_html($testi_form['btn_email']); ?></button><?php } ?>
+        <?php if ($mostra_whatsapp) { ?><button class="manda-con-whatsapp"><?php echo esc_html($testi_form['btn_whatsapp']); ?></button><?php } ?>
+        <?php if ($mostra_btn_pdf) { ?><button class="manda-con-pdf"><?php echo esc_html($testi_form['btn_pdf']); ?></button><?php } ?>
       </div>
 
       <form action="#" method="post" novalidate<?php foreach (PortaleFunebreNecrologi_FormCordoglio::AttributiDati($form_cordoglio) as $attr => $val) { echo ' ' . esc_attr($attr) . '="' . esc_attr($val) . '"'; } ?>>
         <input type="hidden" name="tipo" value="pdf">
-        <input type="hidden" name="slug" value="">
+        <input type="hidden" name="slug" value="<?php echo $necro ? esc_attr($necro->Slug()) : ''; ?>">
         <button class="popclose" type="button">
           <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <g id="Menu / Close_SM">
@@ -244,4 +290,3 @@ $testi_form     = $form_cordoglio['texts'];
   <?php } ?>
 
 </div>
-

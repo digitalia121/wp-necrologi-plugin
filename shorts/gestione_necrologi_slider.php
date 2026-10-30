@@ -30,18 +30,29 @@ $arrowRight = '<svg xmlns="http://www.w3.org/2000/svg" width="25px" xmlns:xlink=
     </g>
 </svg>';
 
+// Con il rendering lato server le slide (e i loro link) sono gia' nell'HTML; se il portale non risponde le carica il JavaScript.
+$necrologi = PortaleFunebreNecrologi_Render::IsAttivo() ? PortaleFunebreNecrologi_Render::Necrologi() : null;
+
 ?>
 
+<?php if ($necrologi === null) { ?>
 <div class="necrologi-loader"><div class="dg_spinner"></div></div>
+<?php } ?>
 
 <?php ?>
 <div
     class="lista-necrologi slider"
     data-pfn-slider="1"
+    <?php if ($necrologi !== null) { ?>data-pfn-rendered="1"<?php } ?>
     data-slug-singolo="<?php echo esc_attr($slug_singolo); ?>"
     data-slide-desktop="<?php echo esc_attr(absint($slide_res_desktop)); ?>"
     data-slide-tablet="<?php echo esc_attr(absint($slide_res_tablet)); ?>"
     data-slide-mobile="<?php echo esc_attr(absint($slide_res_mobile)); ?>"
     data-prev-arrow="<?php echo esc_attr('<button class="slick-prev" aria-label="Previous">' . $arrowLeft . '</button>'); ?>"
-    data-next-arrow="<?php echo esc_attr('<button class="slick-next" aria-label="Next">' . $arrowRight . '</button>'); ?>">
-</div>
+    data-next-arrow="<?php echo esc_attr('<button class="slick-next" aria-label="Next">' . $arrowRight . '</button>'); ?>"><?php
+    if ($necrologi !== null) {
+        foreach ($necrologi as $necro) {
+            echo PortaleFunebreNecrologi_Render::Slide($necro); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Markup costruito con esc_html/esc_url/esc_attr.
+        }
+    }
+?></div>

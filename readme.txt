@@ -4,7 +4,7 @@ Tags: obituaries, condolences, funeral, memorials, necrologi
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 1.0.5
+Stable tag: 1.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -23,6 +23,8 @@ When a visitor submits a condolence message, the plugin sends the submitted form
 Memora is provided by Digitalia Srl. Service information and terms: https://portalefunebre.com/ . Privacy Policy: https://digitalia.srl/dichiarazione-sulla-privacy-ue/ .
 
 WhatsApp is provided by WhatsApp LLC/Meta. Terms: https://www.whatsapp.com/legal/terms-of-service . Privacy Policy: https://www.whatsapp.com/legal/privacy-policy .
+
+When the IndexNow option is enabled (default) and the site allows search engines to index it, the plugin notifies IndexNow when an obituary is published, updated or removed. It sends the site host, the site's IndexNow key and the list of the affected obituary URLs to https://api.indexnow.org/indexnow , which shares them with the participating search engines (such as Microsoft Bing). No visitor data is sent. IndexNow terms: https://www.indexnow.org/terms . Microsoft Privacy Statement: https://privacy.microsoft.com/privacystatement . The option can be disabled in the plugin settings (SEO tab).
 
 == Installation ==
 
@@ -61,3 +63,13 @@ To receive support, contact us at [support@portalefunebre.com](mailto:support@po
 * SEO compliant H1 for single obituary title
 * GoogleMap now forced to use italian as language
 * Using italian format for date in the Obituaries page
+
+= 1.1.0 =
+* SEO: obituaries, lists and slider are rendered server side, so search engines read names, texts and links directly in the HTML
+* SEO: each obituary has its own title, meta description, canonical URL, Open Graph tags and structured data (Person and funeral Event)
+* SEO: Yoast SEO integration (meta, breadcrumbs, schema graph and an obituaries sitemap in the Yoast sitemap index); WordPress core sitemaps are used when Yoast is not active
+* SEO: real 404 status for missing obituaries and temporary 503 status when the portal cannot be reached
+* SEO: periodic update check that refreshes page caches and notifies IndexNow when obituaries change
+* New SEO settings tab with search result preview
+* Local cache of portal data, with a backup copy used when the portal does not respond
+* Advanced condolence form editor

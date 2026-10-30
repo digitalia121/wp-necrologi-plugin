@@ -49,4 +49,53 @@ jQuery(document).ready(function ($) {
         $(document).trigger('pfn:modalita-form', [this.value]);
     });
 
+    // Tab SEO: segnaposto cliccabili e anteprima del risultato di ricerca.
+    let $anteprima = $('.pfn-seo-anteprima');
+
+    if ($anteprima.length) {
+
+        let dati = $anteprima.data('anteprima') || {};
+        let $titolo = $('#seo_titolo');
+        let $desc = $('#seo_descrizione');
+        let $ultimo = $titolo;
+
+        let sostituisci = function (modello) {
+            let testo = String(modello);
+            $.each(dati.valori || {}, function (segnaposto, valore) { testo = testo.split(segnaposto).join(valore); });
+            // Separatori rimasti orfani quando un segnaposto e' vuoto (come lato server).
+            testo = testo.replace(/\s+/g, ' ').replace(/\s*([\-|–—·,])(?:\s*[\-|–—·,])+/g, ' $1').replace(/\s+,/g, ',');
+            return testo.replace(/^[\s\-|–—·,]+|[\s\-|–—·,]+$/g, '');
+        };
+
+        let accorcia = function (testo, max) {
+            if (testo.length <= max) { return testo; }
+            let taglio = testo.slice(0, max);
+            let spazio = taglio.lastIndexOf(' ');
+            if (spazio > max * 0.6) { taglio = taglio.slice(0, spazio); }
+            return taglio.replace(/[\s,.;:\-–]+$/, '') + '…';
+        };
+
+        let aggiorna = function () {
+            let titolo = sostituisci($.trim($titolo.val()) || dati.titolo);
+            let desc = $.trim($desc.val()) ? sostituisci($desc.val()) : (dati.valori['{testo}'] || '');
+            $anteprima.find('.pfn-seo-anteprima-titolo').text(titolo);
+            $anteprima.find('.pfn-seo-anteprima-desc').text(accorcia(desc, dati.max_desc || 155));
+        };
+
+        $titolo.add($desc).on('input', aggiorna).on('focus', function () { $ultimo = $(this); });
+
+        $('.pfn-seo-chip').on('click', function () {
+            let campo = $ultimo.get(0);
+            let segnaposto = this.getAttribute('data-segnaposto');
+            let inizio = campo.selectionStart != null ? campo.selectionStart : campo.value.length;
+            let fine = campo.selectionEnd != null ? campo.selectionEnd : campo.value.length;
+            campo.value = campo.value.slice(0, inizio) + segnaposto + campo.value.slice(fine);
+            campo.focus();
+            campo.setSelectionRange(inizio + segnaposto.length, inizio + segnaposto.length);
+            aggiorna();
+        });
+
+        aggiorna();
+    }
+
 });
