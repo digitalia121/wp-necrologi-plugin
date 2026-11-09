@@ -4,7 +4,7 @@ Tags: obituaries, condolences, funeral, memorials, necrologi
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 1.1.0
+Stable tag: 1.1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -76,3 +76,8 @@ To receive support, contact us at [support@portalefunebre.com](mailto:support@po
 * New obituary detail page in the admin: all portal data, received condolences, and per-obituary SEO settings (SEO title, meta description, focus keyphrase with analysis, noindex, canonical URL, social title, description and image)
 * Local cache of portal data, with a backup copy used when the portal does not respond
 * Advanced condolence form editor
+
+= 1.1.1 =
+* Sharing: with Yoast SEO active, the obituary photo is now the only Open Graph image, so WhatsApp no longer shows the image of the page hosting the obituary
+* Condolence form editor: new compact settings for the submit button, with colors for normal, hover, pressed and focus states, border, spacing, text style, hover effect, transition and shadow
+* Condolence form editor: removed the "Buttons text" color from the Colors section (still applied by the quick color combinations)
