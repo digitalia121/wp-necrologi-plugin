@@ -58,7 +58,17 @@ jQuery(function ($) {
         colore_bottone:       '--pfn-cf-btn-bg',
         colore_bottone_testo: '--pfn-cf-btn-text',
         colore_link:          '--pfn-cf-link',
-        colore_asterisco:     '--pfn-cf-req'
+        colore_asterisco:     '--pfn-cf-req',
+        btn_bg:               '--pfn-cf-sbtn-bg',
+        btn_text:             '--pfn-cf-sbtn-text',
+        btn_border:           '--pfn-cf-sbtn-border',
+        btn_bg_hover:         '--pfn-cf-sbtn-bg-h',
+        btn_text_hover:       '--pfn-cf-sbtn-text-h',
+        btn_border_hover:     '--pfn-cf-sbtn-border-h',
+        btn_bg_active:        '--pfn-cf-sbtn-bg-a',
+        btn_text_active:      '--pfn-cf-sbtn-text-a',
+        btn_border_active:    '--pfn-cf-sbtn-border-a',
+        btn_focus:            '--pfn-cf-sbtn-focus'
     };
 
     // Colore mostrato nel selettore quando il valore e' vuoto (= stile predefinito).
@@ -84,6 +94,52 @@ jQuery(function ($) {
         { nome: 'Blu notte', colori: { colore_sfondo: '#e8edf3', colore_form: '#1d3557', colore_etichette: '#ffffff', colore_input: '#f8fafc', colore_input_testo: '#1d3557', colore_input_bordo: '#9fb3c8', colore_focus: '#a8dadc', colore_bottone: '#a8dadc', colore_bottone_testo: '#1d3557', colore_link: '#a8dadc', colore_asterisco: '#f4a261' } }
     ];
 
+    /*
+     * Bottone di invio. Un colore vuoto eredita da quello indicato qui
+     * (stesso ordine delle regole di frontend.css): serve a mostrare nel
+     * selettore il colore che si vedra' davvero.
+     */
+    const EREDITA_BOTTONE = {
+        btn_bg:            'colore_bottone',
+        btn_text:          'colore_bottone_testo',
+        btn_border:        'btn_text',
+        btn_bg_hover:      'btn_bg',
+        btn_text_hover:    'btn_text',
+        btn_border_hover:  'btn_border',
+        btn_bg_active:     'btn_bg_hover',
+        btn_text_active:   'btn_text_hover',
+        btn_border_active: 'btn_border_hover',
+        btn_focus:         'btn_text'
+    };
+
+    const STATI_BOTTONE = [
+        { id: 'normal', nome: 'Normale', colori: [['btn_bg', 'Sfondo'], ['btn_text', 'Testo'], ['btn_border', 'Bordo']],
+          aiuto: 'Vuoti = colori dei bottoni impostati in "Colori". Il bordo si vede solo con spessore maggiore di 0.' },
+        { id: 'hover', nome: 'Hover', colori: [['btn_bg_hover', 'Sfondo'], ['btn_text_hover', 'Testo'], ['btn_border_hover', 'Bordo']],
+          aiuto: 'Al passaggio del mouse e quando il bottone è raggiunto con la tastiera. Vuoti = come Normale (senza colori, il bottone si schiarisce o scurisce leggermente).' },
+        { id: 'active', nome: 'Premuto', colori: [['btn_bg_active', 'Sfondo'], ['btn_text_active', 'Testo'], ['btn_border_active', 'Bordo']],
+          aiuto: 'Nell\'istante del clic. Vuoti = come Hover.' },
+        { id: 'focus', nome: 'Focus', colori: [['btn_focus', 'Contorno']],
+          aiuto: 'Anello attorno al bottone quando ci si arriva con il tasto Tab. Vuoto = quello predefinito del browser o del tema.' }
+    ];
+
+    const COLORI_BOTTONE = Object.keys(EREDITA_BOTTONE);
+
+    const CONTROLLI_BOTTONE = [
+        { bind: 'style.btn_align', tipo: 'seg', label: 'Larghezza e posizione', scelte: [['stretch', 'Intero'], ['left', 'Sinistra'], ['center', 'Centro'], ['right', 'Destra']], classe: 'is-wide' },
+        { bind: 'style.btn_radius', tipo: 'range', label: 'Arrotondamento', min: 0, max: 40, unita: 'px', aiuto: 'Vale per tutti i bottoni del form.' },
+        { bind: 'style.btn_border_width', tipo: 'range', label: 'Spessore bordo', min: 0, max: 6, unita: 'px' },
+        { bind: 'style.btn_pad_y', tipo: 'range', label: 'Spazio sopra e sotto', min: 0, max: 40, unita: 'px' },
+        { bind: 'style.btn_pad_x', tipo: 'range', label: 'Spazio ai lati', min: 0, max: 80, unita: 'px' },
+        { bind: 'style.btn_font_size', tipo: 'range', label: 'Dimensione testo', min: 0, max: 30, unita: 'px', auto: true },
+        { bind: 'style.btn_letter', tipo: 'range', label: 'Spaziatura lettere', min: 0, max: 6, unita: 'px' },
+        { bind: 'style.btn_weight', tipo: 'seg', label: 'Spessore testo', scelte: [['400', 'Normale'], ['600', 'Medio'], ['700', 'Grassetto']] },
+        { bind: 'style.btn_transform', tipo: 'seg', label: 'Maiuscole', scelte: [['uppercase', 'TUTTO'], ['none', 'Come scritto'], ['capitalize', 'Iniziali']] },
+        { bind: 'style.btn_hover_fx', tipo: 'seg', label: 'Effetto hover', scelte: [['none', 'Nessuno'], ['lift', 'Sollevato']] },
+        { bind: 'style.btn_duration', tipo: 'range', label: 'Durata transizione', min: 0, max: 1000, step: 50, unita: 'ms' },
+        { bind: 'style.btn_shadow', tipo: 'toggle', label: 'Ombra sotto al bottone' }
+    ];
+
     const SEZIONI_ASPETTO = [
         { titolo: 'Colori', icona: 'dashicons-art', temi: true, controlli: [
             { bind: 'style.colore_sfondo', tipo: 'colore', label: 'Sfondo dietro al form', aiuto: 'In popup è il velo sopra la pagina, in pagina è il colore della sezione.' },
@@ -95,7 +151,6 @@ jQuery(function ($) {
             { bind: 'style.colore_input_bordo', tipo: 'colore', label: 'Bordo dei campi' },
             { bind: 'style.colore_focus', tipo: 'colore', label: 'Bordo del campo attivo' },
             { bind: 'style.colore_bottone', tipo: 'colore', label: 'Sfondo dei bottoni' },
-            { bind: 'style.colore_bottone_testo', tipo: 'colore', label: 'Testo dei bottoni' },
             { bind: 'style.colore_link', tipo: 'colore', label: 'Link' },
             { bind: 'style.colore_asterisco', tipo: 'colore', label: 'Asterisco obbligatorio' }
         ] },
@@ -115,10 +170,8 @@ jQuery(function ($) {
             { bind: 'style.gap_x', tipo: 'range', label: 'Spazio tra le colonne', min: 0, max: 60, unita: 'px' },
             { bind: 'style.gap_y', tipo: 'range', label: 'Spazio tra le righe', min: 0, max: 60, unita: 'px' }
         ] },
-        { titolo: 'Titolo e bottone', icona: 'dashicons-button', controlli: [
-            { bind: 'style.title_size', tipo: 'range', label: 'Dimensione del titolo', min: 0, max: 48, unita: 'px', auto: true },
-            { bind: 'style.btn_align', tipo: 'seg', label: 'Bottone di invio', scelte: [['stretch', 'Intero'], ['left', 'Sinistra'], ['center', 'Centro'], ['right', 'Destra']] },
-            { bind: 'style.btn_radius', tipo: 'range', label: 'Arrotondamento bottoni', min: 0, max: 40, unita: 'px' }
+        { titolo: 'Titolo e bottone di invio', icona: 'dashicons-button', bottone: true, controlli: [
+            { bind: 'style.title_size', tipo: 'range', label: 'Dimensione del titolo', min: 0, max: 48, unita: 'px', auto: true }
         ] }
     ];
 
@@ -236,7 +289,7 @@ jQuery(function ($) {
     // Modalita' scelta in "Necrologio singolo": in 'pagina' l'anteprima e' sempre quella in pagina.
     let modalita = CTX.modalita === 'popup' ? 'popup' : 'pagina';
 
-    let ui = { tab: 'campi', aperti: [], device: 'desktop', modo: modalita === 'popup' ? 'popup' : 'inline', contorni: false };
+    let ui = { tab: 'campi', aperti: [], device: 'desktop', modo: modalita === 'popup' ? 'popup' : 'inline', contorni: false, btnStato: 'normal' };
     try {
         let salvato = JSON.parse(window.sessionStorage.getItem('pfn-form-editor-ui') || 'null');
         if (salvato) { ui = Object.assign(ui, salvato); }
@@ -273,6 +326,7 @@ jQuery(function ($) {
         sincronizza();
         $root.find('.pfn-fe-dirty').prop('hidden', false);
         renderAvvisi();
+        aggiornaBottoneUi();
         renderAnteprima();
     };
 
@@ -350,6 +404,14 @@ jQuery(function ($) {
     /* Controlli generici                                                  */
     /* ------------------------------------------------------------------ */
 
+    // Colore che si vede quando il valore e' vuoto (predefinito o ereditato da un altro stato).
+    const coloreVuoto = function (k) {
+        return EREDITA_BOTTONE[k] ? coloreEffettivo(EREDITA_BOTTONE[k]) : (COLORI_PREDEFINITI[k] || '#ffffff');
+    };
+    const coloreEffettivo = function (k) {
+        return hex(config.style[k]) || coloreVuoto(k);
+    };
+
     const ctl = function (label, controllo, aiuto, classe) {
         return '<div class="pfn-fe-ctl' + (classe ? ' ' + classe : '') + '">' +
             '<span class="pfn-fe-ctl-label">' + label + '</span>' + controllo +
@@ -378,19 +440,19 @@ jQuery(function ($) {
                 let k = c.bind.split('.')[1];
                 return ctl(c.label,
                     '<div class="pfn-fe-color' + (v ? '' : ' is-default') + '" ' + attr + '>' +
-                        '<input type="color" class="pfn-fe-color-swatch" value="' + esc(v || COLORI_PREDEFINITI[k] || '#ffffff') + '" aria-label="' + esc(c.label) + '">' +
-                        '<input type="text" class="code pfn-fe-color-hex" spellcheck="false" placeholder="Predefinito" value="' + esc(v) + '">' +
+                        '<input type="color" class="pfn-fe-color-swatch" value="' + esc(v || coloreVuoto(k)) + '" aria-label="' + esc(c.label) + '">' +
+                        '<input type="text" class="code pfn-fe-color-hex" spellcheck="false" placeholder="' + esc(c.placeholder || 'Predefinito') + '" value="' + esc(v) + '">' +
                         '<button type="button" class="pfn-fe-icon-btn pfn-fe-color-reset" title="Torna al colore predefinito"><span class="dashicons dashicons-image-rotate"></span></button>' +
-                    '</div>', c.aiuto);
+                    '</div>', c.aiuto, c.classe);
             case 'range':
                 let testo = (c.auto && !v) ? '' : v;
                 return ctl(c.label,
                     '<div class="pfn-fe-range" ' + attr + ' data-min="' + c.min + '" data-max="' + c.max + '">' +
                         '<input type="range" min="' + c.min + '" max="' + c.max + '" step="' + (c.step || 1) + '" value="' + esc(v) + '" aria-label="' + esc(c.label) + '">' +
                         '<span class="pfn-fe-range-val"><input type="text" inputmode="numeric" value="' + esc(testo) + '"' + (c.auto ? ' placeholder="Auto"' : '') + '><em>' + c.unita + '</em></span>' +
-                    '</div>', c.aiuto);
+                    '</div>', c.aiuto, c.classe);
             case 'seg':
-                return ctl(c.label, seg(attr, v, c.scelte), c.aiuto);
+                return ctl(c.label, seg(attr, v, c.scelte), c.aiuto, c.classe);
             case 'toggle':
                 return ctl('', toggle(attr, v, c.label), c.aiuto, 'is-toggle');
             case 'area':
@@ -413,9 +475,64 @@ jQuery(function ($) {
                     return '<button type="button" class="pfn-fe-theme" data-tema="' + i + '"><span class="pfn-fe-theme-dots" style="background:' + esc(c.colore_sfondo || COLORI_PREDEFINITI.colore_sfondo) + '">' + pallini + '</span>' + esc(t.nome) + '</button>';
                 }).join('') + '</div></div>';
             }
-            h += '<div class="pfn-fe-card-grid">' + s.controlli.map(htmlControllo).join('') + '</div></div>';
+            h += '<div class="pfn-fe-card-grid">' + s.controlli.map(htmlControllo).join('') + '</div>';
+            if (s.bottone) { h += htmlBottone(); }
+            h += '</div>';
         });
         $root.find('[data-panel="' + panel + '"]').html(h);
+    };
+
+    /* ------------------------------------------------------------------ */
+    /* Bottone di invio                                                    */
+    /* ------------------------------------------------------------------ */
+
+    const statoBottone = function () {
+        for (let i = 0; i < STATI_BOTTONE.length; i++) { if (STATI_BOTTONE[i].id === ui.btnStato) { return STATI_BOTTONE[i]; } }
+        return STATI_BOTTONE[0];
+    };
+
+    const statoPersonalizzato = function (stato) {
+        return stato.colori.some(function (c) { return !!hex(config.style[c[0]]); });
+    };
+
+    const htmlStatiBottone = function () {
+        let attivo = statoBottone().id;
+        return '<div class="pfn-fe-seg is-small pfn-fe-btn-states" role="group" aria-label="Stato del bottone">' + STATI_BOTTONE.map(function (s) {
+            let on = s.id === attivo;
+            return '<button type="button" data-btn-stato="' + s.id + '" class="' + (on ? 'is-active' : '') + '" aria-pressed="' + on + '">' +
+                esc(s.nome) + '<b class="pfn-fe-btn-dot"' + (statoPersonalizzato(s) ? '' : ' hidden') + ' title="Personalizzato"></b></button>';
+        }).join('') + '</div>';
+    };
+
+    const htmlColoriBottone = function () {
+        let stato = statoBottone();
+        return '<div class="pfn-fe-btn-colors is-' + stato.colori.length + '">' + stato.colori.map(function (c) {
+            return htmlControllo({ bind: 'style.' + c[0], tipo: 'colore', label: c[1], placeholder: 'Auto' });
+        }).join('') + '</div>' +
+        '<p class="pfn-fe-help pfn-fe-btn-help">' + esc(stato.aiuto) + '</p>';
+    };
+
+    const htmlBottone = function () {
+        return '<div class="pfn-fe-btn-style">' +
+            '<div class="pfn-fe-btn-head">' +
+                '<span class="pfn-fe-btn-title">Bottone di invio</span>' +
+                htmlStatiBottone() +
+            '</div>' +
+            '<div class="pfn-fe-btn-state-panel">' + htmlColoriBottone() + '</div>' +
+            '<div class="pfn-fe-btn-grid">' + CONTROLLI_BOTTONE.map(htmlControllo).join('') + '</div>' +
+        '</div>';
+    };
+
+    // Dopo un cambio di colore: aggiorna i selettori che ereditano e i pallini degli stati.
+    const aggiornaBottoneUi = function () {
+        let $b = $root.find('.pfn-fe-btn-style');
+        if (!$b.length) { return; }
+        $b.find('.pfn-fe-color.is-default').each(function () {
+            $(this).find('.pfn-fe-color-swatch').val(coloreVuoto($(this).attr('data-bind').split('.')[1]));
+        });
+        STATI_BOTTONE.forEach(function (s) {
+            $b.find('[data-btn-stato="' + s.id + '"] .pfn-fe-btn-dot').prop('hidden', !statoPersonalizzato(s));
+        });
     };
 
     const renderPannelli = function () {
@@ -692,11 +809,19 @@ jQuery(function ($) {
             '--pfn-cf-input-radius': s.input_radius + 'px',
             '--pfn-cf-border-width': s.border_width + 'px',
             '--pfn-cf-btn-radius': s.btn_radius + 'px',
-            '--pfn-cf-input-pad': (TAGLIE[s.field_size] || TAGLIE.m)[0]
+            '--pfn-cf-input-pad': (TAGLIE[s.field_size] || TAGLIE.m)[0],
+            '--pfn-cf-sbtn-bw': s.btn_border_width + 'px',
+            '--pfn-cf-sbtn-py': s.btn_pad_y + 'px',
+            '--pfn-cf-sbtn-px': s.btn_pad_x + 'px',
+            '--pfn-cf-sbtn-fw': s.btn_weight,
+            '--pfn-cf-sbtn-tt': s.btn_transform,
+            '--pfn-cf-sbtn-dur': s.btn_duration + 'ms'
         };
         if ((TAGLIE[s.field_size] || TAGLIE.m)[1]) { v['--pfn-cf-input-font'] = TAGLIE[s.field_size][1]; }
         if (s.label_size) { v['--pfn-cf-label-size'] = s.label_size + 'px'; }
         if (s.title_size) { v['--pfn-cf-title-size'] = s.title_size + 'px'; }
+        if (s.btn_font_size) { v['--pfn-cf-sbtn-fs'] = s.btn_font_size + 'px'; }
+        if (s.btn_letter) { v['--pfn-cf-sbtn-ls'] = s.btn_letter + 'px'; }
         Object.keys(VAR_COLORI).forEach(function (k) { if (hex(s[k])) { v[VAR_COLORI[k]] = hex(s[k]); } });
         if (hex(s.colore_sfondo)) {
             v['--pfn-cf-overlay'] = rgba(s.colore_sfondo, s.bg_opacity);
@@ -710,6 +835,20 @@ jQuery(function ($) {
         let c = ['pfn-cf-labels-' + s.label_position, 'pfn-cf-btn-' + s.btn_align];
         if (!s.shadow) { c.push('pfn-cf-no-shadow'); }
         if (hex(s.colore_bottone)) { c.push('pfn-cf-btn-custom'); }
+        // Specchio di ClassiCss() in inc/form_cordoglio.php.
+        if (hex(s.colore_bottone) || hex(s.btn_bg)) { c.push('pfn-cf-sbtn-custom'); }
+        STATI_BOTTONE.forEach(function (st) {
+            if ((st.id === 'hover' || st.id === 'active') && statoPersonalizzato(st)) { c.push('pfn-cf-sbtn-' + st.id); }
+        });
+        if (hex(s.btn_focus)) { c.push('pfn-cf-sbtn-focus'); }
+        if (s.btn_shadow) { c.push('pfn-cf-sbtn-shadow'); }
+        if (s.btn_hover_fx === 'lift') { c.push('pfn-cf-sbtn-lift'); }
+        // Nel pannello Aspetto l'anteprima mostra il bottone nello stato che si sta modificando.
+        if (ui.tab === 'aspetto') {
+            let stato = statoBottone().id;
+            if (stato !== 'normal') { c.push('pfn-prev-st-hover'); }
+            if (stato === 'active' || stato === 'focus') { c.push('pfn-prev-st-' + stato); }
+        }
         return c.join(' ');
     };
 
@@ -825,6 +964,8 @@ jQuery(function ($) {
         $root.find('.pfn-fe-section').each(function () {
             this.hidden = this.getAttribute('data-panel') !== tab;
         });
+        // Lo stato del bottone mostrato in anteprima dipende dal pannello aperto.
+        if (canvas.firstChild) { renderAnteprima(); }
     };
 
     const applicaModalita = function () {
@@ -1106,7 +1247,7 @@ jQuery(function ($) {
         let k = $c.attr('data-bind').split('.')[1];
         scrivi($c.attr('data-bind'), valore);
         $c.toggleClass('is-default', !valore);
-        $c.find('.pfn-fe-color-swatch').val(valore || COLORI_PREDEFINITI[k] || '#ffffff');
+        $c.find('.pfn-fe-color-swatch').val(valore || coloreVuoto(k));
     };
 
     $root.on('input', '.pfn-fe-color-swatch', function () {
@@ -1135,8 +1276,20 @@ jQuery(function ($) {
     $root.on('click', '.pfn-fe-theme', function () {
         let tema = TEMI[+this.getAttribute('data-tema')];
         Object.keys(COLORI_PREDEFINITI).forEach(function (k) { config.style[k] = tema.colori[k] || ''; });
+        // I colori propri del bottone di invio tornano a seguire quelli del tema.
+        COLORI_BOTTONE.forEach(function (k) { config.style[k] = tema.colori[k] || ''; });
         renderSezioni('aspetto', SEZIONI_ASPETTO);
         modificato();
+    });
+
+    $root.on('click', '[data-btn-stato]', function () {
+        ui.btnStato = this.getAttribute('data-btn-stato');
+        salvaUi();
+        let $b = $(this).closest('.pfn-fe-btn-style');
+        $b.find('.pfn-fe-btn-states').replaceWith(htmlStatiBottone());
+        $b.find('.pfn-fe-btn-state-panel').html(htmlColoriBottone());
+        $b.find('[data-btn-stato="' + ui.btnStato + '"]').trigger('focus');
+        renderAnteprima();
     });
 
     /* ------------------------------------------------------------------ */

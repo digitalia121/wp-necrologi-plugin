@@ -36,12 +36,28 @@ class PortaleFunebreNecrologi_FormCordoglio {
         'title_size'   => [0, 48],
         'btn_radius'   => [0, 40],
         'bg_opacity'   => [0, 100],
+        // Bottone di invio
+        'btn_border_width' => [0, 6],
+        'btn_pad_y'        => [0, 40],
+        'btn_pad_x'        => [0, 80],
+        'btn_font_size'    => [0, 30],
+        'btn_letter'       => [0, 6],
+        'btn_duration'     => [0, 1000],
     ];
 
     const SCELTE_STILE = [
         'field_size'     => ['s', 'm', 'l', 'xl'],
         'label_position' => ['top', 'hidden'],
         'btn_align'      => ['stretch', 'left', 'center', 'right'],
+        'btn_weight'     => ['400', '600', '700'],
+        'btn_transform'  => ['uppercase', 'none', 'capitalize'],
+        'btn_hover_fx'   => ['none', 'lift'],
+    ];
+
+    // Colori degli stati del bottone di invio: se vuoti ereditano dallo stato precedente.
+    const COLORI_STATI_BOTTONE = [
+        'hover'  => ['btn_bg_hover', 'btn_text_hover', 'btn_border_hover'],
+        'active' => ['btn_bg_active', 'btn_text_active', 'btn_border_active'],
     ];
 
     // Padding e dimensione del testo dei campi per ogni taglia ('' = eredita dal tema).
@@ -64,6 +80,17 @@ class PortaleFunebreNecrologi_FormCordoglio {
         'colore_bottone_testo' => '--pfn-cf-btn-text',
         'colore_link'          => '--pfn-cf-link',
         'colore_asterisco'     => '--pfn-cf-req',
+        // Bottone di invio (vuoti = colori dei bottoni qui sopra)
+        'btn_bg'               => '--pfn-cf-sbtn-bg',
+        'btn_text'             => '--pfn-cf-sbtn-text',
+        'btn_border'           => '--pfn-cf-sbtn-border',
+        'btn_bg_hover'         => '--pfn-cf-sbtn-bg-h',
+        'btn_text_hover'       => '--pfn-cf-sbtn-text-h',
+        'btn_border_hover'     => '--pfn-cf-sbtn-border-h',
+        'btn_bg_active'        => '--pfn-cf-sbtn-bg-a',
+        'btn_text_active'      => '--pfn-cf-sbtn-text-a',
+        'btn_border_active'    => '--pfn-cf-sbtn-border-a',
+        'btn_focus'            => '--pfn-cf-sbtn-focus',
     ];
 
     /**
@@ -148,6 +175,27 @@ class PortaleFunebreNecrologi_FormCordoglio {
                 'gap_y'                => 15,
                 'btn_align'            => 'stretch',
                 'btn_radius'           => 5,
+                // Bottone di invio: i valori predefiniti riproducono lo stile storico.
+                'btn_bg'               => '',
+                'btn_text'             => '',
+                'btn_border'           => '',
+                'btn_bg_hover'         => '',
+                'btn_text_hover'       => '',
+                'btn_border_hover'     => '',
+                'btn_bg_active'        => '',
+                'btn_text_active'      => '',
+                'btn_border_active'    => '',
+                'btn_focus'            => '',
+                'btn_border_width'     => 0,
+                'btn_pad_y'            => 10,
+                'btn_pad_x'            => 32,
+                'btn_font_size'        => 0,
+                'btn_letter'           => 0,
+                'btn_weight'           => '700',
+                'btn_transform'        => 'uppercase',
+                'btn_hover_fx'         => 'none',
+                'btn_duration'         => 300,
+                'btn_shadow'           => false,
             ],
             'texts'  => [
                 'title'         => '',
@@ -342,11 +390,19 @@ class PortaleFunebreNecrologi_FormCordoglio {
             '--pfn-cf-border-width' => $s['border_width'] . 'px',
             '--pfn-cf-btn-radius'   => $s['btn_radius'] . 'px',
             '--pfn-cf-input-pad'    => self::TAGLIE_CAMPI[$s['field_size']][0],
+            '--pfn-cf-sbtn-bw'      => $s['btn_border_width'] . 'px',
+            '--pfn-cf-sbtn-py'      => $s['btn_pad_y'] . 'px',
+            '--pfn-cf-sbtn-px'      => $s['btn_pad_x'] . 'px',
+            '--pfn-cf-sbtn-fw'      => $s['btn_weight'],
+            '--pfn-cf-sbtn-tt'      => $s['btn_transform'],
+            '--pfn-cf-sbtn-dur'     => $s['btn_duration'] . 'ms',
         ];
 
         if (self::TAGLIE_CAMPI[$s['field_size']][1]) { $vars['--pfn-cf-input-font'] = self::TAGLIE_CAMPI[$s['field_size']][1]; }
         if ($s['label_size']) { $vars['--pfn-cf-label-size'] = $s['label_size'] . 'px'; }
         if ($s['title_size']) { $vars['--pfn-cf-title-size'] = $s['title_size'] . 'px'; }
+        if ($s['btn_font_size']) { $vars['--pfn-cf-sbtn-fs'] = $s['btn_font_size'] . 'px'; }
+        if ($s['btn_letter'])    { $vars['--pfn-cf-sbtn-ls'] = $s['btn_letter'] . 'px'; }
 
         foreach (self::VARIABILI_COLORI as $k => $var) {
             if ($s[$k]) { $vars[$var] = $s[$k]; }
@@ -374,6 +430,17 @@ class PortaleFunebreNecrologi_FormCordoglio {
 
         if (!$s['shadow'])        { $classi[] = 'pfn-cf-no-shadow'; }
         if ($s['colore_bottone']) { $classi[] = 'pfn-cf-btn-custom'; }
+
+        // Bottone di invio: le classi attivano solo le regole degli stati personalizzati.
+        if ($s['colore_bottone'] || $s['btn_bg']) { $classi[] = 'pfn-cf-sbtn-custom'; }
+        foreach (self::COLORI_STATI_BOTTONE as $stato => $chiavi) {
+            foreach ($chiavi as $k) {
+                if ($s[$k]) { $classi[] = 'pfn-cf-sbtn-' . $stato; break; }
+            }
+        }
+        if ($s['btn_focus'])              { $classi[] = 'pfn-cf-sbtn-focus'; }
+        if ($s['btn_shadow'])             { $classi[] = 'pfn-cf-sbtn-shadow'; }
+        if ($s['btn_hover_fx'] === 'lift') { $classi[] = 'pfn-cf-sbtn-lift'; }
 
         return implode(' ', $classi);
     }

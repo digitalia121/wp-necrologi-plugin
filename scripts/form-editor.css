@@ -794,6 +794,121 @@
     border: 1px solid rgba(0, 0, 0, .15);
 }
 
+/* stile compatto del bottone di invio (pannello Aspetto) */
+.pfn-fe-btn-style {
+    margin: 2px -16px -4px;
+    padding: 12px 16px 6px;
+    border-top: 1px solid #f0f0f1;
+    background: #fbfbfc;
+    border-radius: 0 0 8px 8px;
+}
+.pfn-fe-btn-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+.pfn-fe-btn-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #3c434a;
+}
+.pfn-fe-btn-states button {
+    flex-direction: row;
+    gap: 5px;
+    padding: 4px 10px;
+}
+.pfn-fe-btn-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #dba617;
+}
+.pfn-fe-btn-states button.is-active .pfn-fe-btn-dot {
+    background: #fff;
+}
+.pfn-fe-btn-state-panel {
+    padding: 10px 10px 8px;
+    margin-bottom: 12px;
+    background: #fff;
+    border: 1px solid var(--pfn-fe-border);
+    border-radius: 6px;
+}
+.pfn-fe-btn-colors {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    column-gap: 10px;
+}
+.pfn-fe-btn-colors .pfn-fe-ctl {
+    margin-bottom: 4px;
+}
+.pfn-fe-btn-colors.is-1 {
+    grid-template-columns: minmax(0, 200px);
+}
+.pfn-fe-btn-colors .pfn-fe-color {
+    gap: 4px;
+}
+.pfn-fe .pfn-fe-btn-colors .pfn-fe-color-swatch {
+    width: 30px;
+    height: 28px;
+}
+.wp-core-ui .pfn-fe .pfn-fe-btn-colors .pfn-fe-color-hex,
+.pfn-fe .pfn-fe-btn-colors .pfn-fe-color-hex {
+    min-height: 28px;
+    padding: 0 6px;
+    font-size: 12px;
+}
+.pfn-fe-btn-colors .pfn-fe-color-reset {
+    width: 22px;
+    flex-shrink: 0;
+}
+.digitalia-wp-plugin .pfn-fe .pfn-fe-btn-colors .pfn-fe-color-reset .dashicons {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+}
+.pfn-fe-btn-help {
+    margin: 2px 0 0;
+    font-size: 11px;
+    line-height: 1.4;
+}
+.pfn-fe-btn-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    column-gap: 14px;
+}
+.pfn-fe-btn-grid .pfn-fe-ctl {
+    margin-bottom: 10px;
+}
+.pfn-fe-btn-grid .pfn-fe-ctl.is-wide {
+    grid-column: 1 / -1;
+}
+.pfn-fe-btn-grid .pfn-fe-ctl-label {
+    font-size: 11px;
+    margin-bottom: 3px;
+}
+.pfn-fe-btn-grid .pfn-fe-seg button {
+    min-width: 0;
+    padding: 4px 9px;
+}
+.pfn-fe-btn-grid .pfn-fe-range {
+    gap: 6px;
+}
+.wp-core-ui .pfn-fe .pfn-fe-btn-grid .pfn-fe-range-val input,
+.pfn-fe .pfn-fe-btn-grid .pfn-fe-range-val input {
+    width: 48px;
+    min-height: 26px;
+}
+.pfn-fe-btn-grid .pfn-fe-help {
+    font-size: 11px;
+    margin-top: 2px;
+}
+.pfn-fe-btn-grid .pfn-fe-ctl.is-toggle {
+    align-self: center;
+}
+
 /* pannello anteprima */
 .pfn-fe-preview {
     background: #fff;
@@ -1019,23 +1134,62 @@
 .pfn-fe-stage .form-container button.invia-a-api {
     display: block;
     width: 100%;
-    padding: 10px;
-    border: none;
+    padding: var(--pfn-cf-sbtn-py, 10px) var(--pfn-cf-sbtn-px, 10px);
+    border: var(--pfn-cf-sbtn-bw, 0px) solid var(--pfn-cf-sbtn-border, currentColor);
     border-radius: var(--pfn-cf-btn-radius, 5px);
-    background-color: var(--pfn-cf-btn-bg, #ffffff8f);
-    color: var(--pfn-cf-btn-text, var(--dg-necro-colore-box));
-    text-transform: uppercase;
-    font-weight: bold;
-    font-size: 14px;
+    background-color: var(--pfn-cf-sbtn-bg, var(--pfn-cf-btn-bg, #ffffff8f));
+    color: var(--pfn-cf-sbtn-text, var(--pfn-cf-btn-text, var(--dg-necro-colore-box)));
+    text-transform: var(--pfn-cf-sbtn-tt, uppercase);
+    font-weight: var(--pfn-cf-sbtn-fw, bold);
+    font-size: var(--pfn-cf-sbtn-fs, 14px);
+    letter-spacing: var(--pfn-cf-sbtn-ls, normal);
+    line-height: 1.4;
+    transition-property: background-color, color, border-color, filter, transform, box-shadow;
+    transition-duration: var(--pfn-cf-sbtn-dur, .3s);
     pointer-events: none;
+}
+/* stati del bottone: nel pannello Aspetto l'anteprima li forza con le classi .pfn-prev-st-* */
+.pfn-fe-stage .pfn-prev.pfn-prev-st-hover .form-container button.invia-a-api {
+    background-color: #ffffff54;
+}
+.pfn-fe-stage .pfn-prev.pfn-cf-sbtn-custom.pfn-prev-st-hover .form-container button.invia-a-api {
+    background-color: var(--pfn-cf-sbtn-bg, var(--pfn-cf-btn-bg));
+    filter: brightness(.9);
+}
+.pfn-fe-stage .pfn-prev.pfn-cf-sbtn-hover.pfn-prev-st-hover .form-container button.invia-a-api {
+    background-color: var(--pfn-cf-sbtn-bg-h, var(--pfn-cf-sbtn-bg, var(--pfn-cf-btn-bg, #ffffff8f)));
+    color: var(--pfn-cf-sbtn-text-h, var(--pfn-cf-sbtn-text, var(--pfn-cf-btn-text, var(--dg-necro-colore-box))));
+    border-color: var(--pfn-cf-sbtn-border-h, var(--pfn-cf-sbtn-border, currentColor));
+    filter: none;
+}
+.pfn-fe-stage .pfn-prev.pfn-cf-sbtn-active.pfn-prev-st-active .form-container button.invia-a-api {
+    background-color: var(--pfn-cf-sbtn-bg-a, var(--pfn-cf-sbtn-bg-h, var(--pfn-cf-sbtn-bg, var(--pfn-cf-btn-bg, #ffffff8f))));
+    color: var(--pfn-cf-sbtn-text-a, var(--pfn-cf-sbtn-text-h, var(--pfn-cf-sbtn-text, var(--pfn-cf-btn-text, var(--dg-necro-colore-box)))));
+    border-color: var(--pfn-cf-sbtn-border-a, var(--pfn-cf-sbtn-border-h, var(--pfn-cf-sbtn-border, currentColor)));
+    filter: none;
+}
+.pfn-fe-stage .pfn-prev.pfn-prev-st-focus .form-container button.invia-a-api {
+    outline: 2px solid var(--pfn-cf-sbtn-focus, #2271b1);
+    outline-offset: 3px;
+}
+.pfn-fe-stage .pfn-prev.pfn-cf-sbtn-shadow .form-container button.invia-a-api {
+    box-shadow: 0 3px 8px rgba(0, 0, 0, .22);
+}
+.pfn-fe-stage .pfn-prev.pfn-cf-sbtn-lift.pfn-prev-st-hover .form-container button.invia-a-api {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 14px rgba(0, 0, 0, .22);
+}
+.pfn-fe-stage .pfn-prev.pfn-cf-sbtn-lift.pfn-prev-st-active .form-container button.invia-a-api {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, .2);
 }
 .pfn-fe-stage .pfn-cf-btn-left .form-container button.invia-a-api,
 .pfn-fe-stage .pfn-cf-btn-center .form-container button.invia-a-api,
 .pfn-fe-stage .pfn-cf-btn-right .form-container button.invia-a-api {
     width: auto;
     min-width: 160px;
-    padding-left: 32px;
-    padding-right: 32px;
+    padding-left: var(--pfn-cf-sbtn-px, 32px);
+    padding-right: var(--pfn-cf-sbtn-px, 32px);
 }
 .pfn-fe-stage .pfn-cf-btn-center .form-container button.invia-a-api { margin-left: auto; margin-right: auto; }
 .pfn-fe-stage .pfn-cf-btn-right .form-container button.invia-a-api { margin-left: auto; }

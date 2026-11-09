@@ -35,6 +35,7 @@ class PortaleFunebreNecrologi_Seo_Yoast {
         add_filter('wpseo_opengraph_url', [__CLASS__, 'Canonical'], 20);
         add_filter('wpseo_opengraph_type', [__CLASS__, 'TipoOpenGraph'], 20);
         add_filter('wpseo_add_opengraph_images', [__CLASS__, 'Immagini']);
+        add_filter('wpseo_frontend_presentation', [__CLASS__, 'Presentazione'], 20);
         add_filter('wpseo_twitter_card_type', [__CLASS__, 'SchedaTwitter'], 20);
 
         add_filter('wpseo_robots_array', [__CLASS__, 'Robots'], 20);
@@ -82,6 +83,36 @@ class PortaleFunebreNecrologi_Seo_Yoast {
             ]);
         }
         return $contenitore;
+    }
+
+    /**
+     * La foto del defunto deve essere l'unica immagine social della pagina.
+     * Dopo le immagini aggiunte col filtro Yoast mette anche quelle della
+     * pagina contenitore (immagine in evidenza, prima immagine del contenuto)
+     * e le stampa tutte: Facebook usa il primo og:image, WhatsApp l'ultimo,
+     * che sarebbe quindi l'immagine della pagina e non il defunto.
+     */
+    static function Presentazione($presentazione) {
+
+        $immagine = PortaleFunebreNecrologi_Seo::ImmagineSocial();
+
+        if (!$immagine || !is_object($presentazione)) { return $presentazione; }
+
+        $tipo = wp_check_filetype((string) wp_parse_url($immagine['url'], PHP_URL_PATH));
+
+        // Proprieta' che Yoast altrimenti calcolerebbe dalla pagina contenitore.
+        $presentazione->open_graph_images = [
+            $immagine['url'] => array_filter([
+                'url'    => $immagine['url'],
+                'width'  => $immagine['width'],
+                'height' => $immagine['height'],
+                'type'   => $tipo['type'],
+                'alt'    => PortaleFunebreNecrologi_Render::AltFoto(PortaleFunebreNecrologi_Seo::Corrente()),
+            ]),
+        ];
+        $presentazione->twitter_image = $immagine['url'];
+
+        return $presentazione;
     }
 
     /** Scheda compatta su X, come quella del vecchio sharer. */

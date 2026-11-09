@@ -856,14 +856,70 @@ a.necrologio-loop,
     clip: rect(0 0 0 0);
     white-space: nowrap;
 }
+/*
+ * Bottone di invio (Impostazioni > Form di cordoglio > Aspetto).
+ * Senza personalizzazioni riproduce lo stile storico; i colori vuoti
+ * ereditano dallo stato precedente (premuto > hover > normale > bottoni).
+ */
+.form-container button.invia-a-api {
+    padding: var(--pfn-cf-sbtn-py, 10px) var(--pfn-cf-sbtn-px, 10px);
+    border: var(--pfn-cf-sbtn-bw, 0px) solid var(--pfn-cf-sbtn-border, currentColor);
+    background-color: var(--pfn-cf-sbtn-bg, var(--pfn-cf-btn-bg, #ffffff8f));
+    color: var(--pfn-cf-sbtn-text, var(--pfn-cf-btn-text, var(--dg-necro-colore-box)));
+    font-size: var(--pfn-cf-sbtn-fs, inherit);
+    font-weight: var(--pfn-cf-sbtn-fw, bold);
+    text-transform: var(--pfn-cf-sbtn-tt, uppercase);
+    letter-spacing: var(--pfn-cf-sbtn-ls, normal);
+    transition-property: background-color, color, border-color, filter, transform, box-shadow;
+    transition-duration: var(--pfn-cf-sbtn-dur, 0.3s);
+}
+.form-container button.invia-a-api:hover,
+.form-container button.invia-a-api:focus-visible {
+    background-color: #ffffff54;
+}
+.pfn-cf-sbtn-custom .form-container button.invia-a-api:hover,
+.pfn-cf-sbtn-custom .form-container button.invia-a-api:focus-visible {
+    background-color: var(--pfn-cf-sbtn-bg, var(--pfn-cf-btn-bg));
+    filter: brightness(0.9);
+}
+.pfn-cf-sbtn-hover .form-container button.invia-a-api:hover,
+.pfn-cf-sbtn-hover .form-container button.invia-a-api:focus-visible {
+    background-color: var(--pfn-cf-sbtn-bg-h, var(--pfn-cf-sbtn-bg, var(--pfn-cf-btn-bg, #ffffff8f)));
+    color: var(--pfn-cf-sbtn-text-h, var(--pfn-cf-sbtn-text, var(--pfn-cf-btn-text, var(--dg-necro-colore-box))));
+    border-color: var(--pfn-cf-sbtn-border-h, var(--pfn-cf-sbtn-border, currentColor));
+    filter: none;
+}
+.pfn-cf-sbtn-active .form-container button.invia-a-api:active {
+    background-color: var(--pfn-cf-sbtn-bg-a, var(--pfn-cf-sbtn-bg-h, var(--pfn-cf-sbtn-bg, var(--pfn-cf-btn-bg, #ffffff8f))));
+    color: var(--pfn-cf-sbtn-text-a, var(--pfn-cf-sbtn-text-h, var(--pfn-cf-sbtn-text, var(--pfn-cf-btn-text, var(--dg-necro-colore-box)))));
+    border-color: var(--pfn-cf-sbtn-border-a, var(--pfn-cf-sbtn-border-h, var(--pfn-cf-sbtn-border, currentColor)));
+    filter: none;
+}
+.pfn-cf-sbtn-focus .form-container button.invia-a-api:focus-visible {
+    outline: 2px solid var(--pfn-cf-sbtn-focus);
+    outline-offset: 3px;
+}
+.pfn-cf-sbtn-shadow .form-container button.invia-a-api {
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.22);
+}
+.pfn-cf-sbtn-lift .form-container button.invia-a-api:hover,
+.pfn-cf-sbtn-lift .form-container button.invia-a-api:focus-visible {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.22);
+}
+.pfn-cf-sbtn-lift .form-container button.invia-a-api:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
 .pfn-cf-btn-left .form-container button.invia-a-api,
 .pfn-cf-btn-center .form-container button.invia-a-api,
 .pfn-cf-btn-right .form-container button.invia-a-api {
     display: block;
     width: auto;
     min-width: 160px;
-    padding-left: 32px;
-    padding-right: 32px;
+    padding-left: var(--pfn-cf-sbtn-px, 32px);
+    padding-right: var(--pfn-cf-sbtn-px, 32px);
 }
 .pfn-cf-btn-center .form-container button.invia-a-api { margin-left: auto; margin-right: auto; }
 .pfn-cf-btn-right .form-container button.invia-a-api { margin-left: auto; }
