@@ -127,7 +127,6 @@ $seo_indexnow         = !(isset($impostazioni['seo_indexnow']) && $impostazioni[
 $seo_titolo           = isset($impostazioni['seo_titolo'])       ? $impostazioni['seo_titolo'] : '';
 $seo_descrizione      = isset($impostazioni['seo_descrizione'])  ? $impostazioni['seo_descrizione'] : '';
 $seo_pagina_lista     = isset($impostazioni['seo_pagina_lista']) ? absint($impostazioni['seo_pagina_lista']) : 0;
-$seo_cache_minuti     = isset($impostazioni['seo_cache_minuti']) ? absint($impostazioni['seo_cache_minuti']) : PortaleFunebreNecrologi_Repository::DURATA_PREDEFINITA;
 
 
 if (isset($_POST['cambia_impostazioni'])) {
@@ -204,10 +203,6 @@ if (isset($_POST['cambia_impostazioni'])) {
     $seo_titolo           = $field('seo_titolo');
     $seo_descrizione      = $field('seo_descrizione');
     $seo_pagina_lista     = absint($field('seo_pagina_lista'));
-    $seo_cache_minuti     = absint($field('seo_cache_minuti', (string) PortaleFunebreNecrologi_Repository::DURATA_PREDEFINITA));
-    if (!in_array($seo_cache_minuti, PortaleFunebreNecrologi_Repository::DURATE, true)) {
-        $seo_cache_minuti = PortaleFunebreNecrologi_Repository::DURATA_PREDEFINITA;
-    }
 
     $impostazioni['tipo_visualizzazione'] = $tipo_vis;
     
@@ -258,7 +253,6 @@ if (isset($_POST['cambia_impostazioni'])) {
     $impostazioni['seo_titolo']           = $seo_titolo;
     $impostazioni['seo_descrizione']      = $seo_descrizione;
     $impostazioni['seo_pagina_lista']     = $seo_pagina_lista;
-    $impostazioni['seo_cache_minuti']     = $seo_cache_minuti;
 
     // Per i valori mostrati qui sotto, dopo il salvataggio.
     $seo_rendering_server = $seo_rendering_server === '1';
@@ -344,9 +338,16 @@ if (PortaleFunebreNecrologi_Seo_Yoast::IsAttivo()) {
 }
 
 $seo_monitor = PortaleFunebreNecrologi_Monitor::Stato();
-$seo_stato[] = !empty($seo_monitor['controllo'])
-    ? ['ok', 'Ultimo controllo degli aggiornamenti dal portale: ' . wp_date('j F Y, H:i', $seo_monitor['controllo']) . '.']
-    : ['warn', 'Il controllo degli aggiornamenti dal portale (ogni 15 minuti) non è ancora stato eseguito.'];
+if (empty($seo_monitor['controllo'])) {
+    $seo_stato[] = ['warn', 'Il controllo degli aggiornamenti dal portale (ogni minuto) non è ancora stato eseguito.'];
+} elseif (!PortaleFunebreNecrologi_Monitor::IsAttivo()) {
+    $seo_stato[] = ['warn', 'L\'ultimo controllo degli aggiornamenti dal portale risale al ' . wp_date('j F Y, H:i', $seo_monitor['controllo']) . ': WP-Cron non sta girando ogni minuto (sito con poche visite o DISABLE_WP_CRON senza un cron di sistema). Nel frattempo i dati si rinnovano ogni 5 minuti. Per il controllo al minuto serve un cron di sistema che chiami wp-cron.php ogni minuto.'];
+} else {
+    $seo_stato[] = ['ok', 'Ultimo controllo degli aggiornamenti dal portale: ' . wp_date('j F Y, H:i', $seo_monitor['controllo']) . '.'];
+    if (isset($seo_monitor['incrementale']) && !$seo_monitor['incrementale'] && !empty($seo_monitor['completo']) && $seo_monitor['completo'] === $seo_monitor['controllo']) {
+        $seo_stato[] = ['warn', 'Il portale non ha restituito solo i necrologi modificati: a ogni controllo viene scaricata la lista completa (gli aggiornamenti restano limitati ai necrologi cambiati). Normale subito dopo il primo controllo; se resta, il portale va aggiornato.'];
+    }
+}
 
 if (!empty($seo_monitor['indexnow'])) {
     $seo_stato[] = ['ok', 'Ultimo invio a IndexNow: ' . wp_date('j F Y, H:i', $seo_monitor['indexnow']) . ' (' . (int) $seo_monitor['indexnow_url'] . ' URL, esito ' . $seo_monitor['indexnow_esito'] . ').'];
@@ -793,13 +794,9 @@ foreach (array_keys(PortaleFunebreNecrologi_Seo::SEGNAPOSTO) as $segnaposto) {
             </div>
 
             <div class="dgplugin-input-wrap">
-                <label for="seo_cache_minuti">Aggiornamento dei dati dal portale</label>
-                <select name="seo_cache_minuti" id="seo_cache_minuti">
-                    <?php foreach (PortaleFunebreNecrologi_Repository::DURATE as $minuti) { ?>
-                        <option <?php if ($minuti === $seo_cache_minuti) { echo 'selected'; } ?> value="<?php echo esc_attr($minuti); ?>">Ogni <?php echo esc_html($minuti); ?> minuti</option>
-                    <?php } ?>
-                </select>
-                <span class="pfn-seo-hint">Durata della copia locale dei necrologi. Al salvataggio viene rinnovata.</span>
+                <label>Aggiornamento dei dati dal portale</label>
+                <p>Ogni minuto, solo i necrologi modificati.</p>
+                <span class="pfn-seo-hint">Il sito chiede al portale i necrologi cambiati dall'ultimo controllo e rinnova solo quelli; la lista completa viene riletta una volta al giorno come verifica. Al salvataggio delle impostazioni la copia locale viene rinnovata.</span>
             </div>
 
             <div class="dgplugin-input-wrap">

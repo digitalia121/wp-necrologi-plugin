@@ -3,23 +3,41 @@
 if (!defined('ABSPATH')) { exit; }
 
 /**
- * Controllo periodico dei necrologi (WP-Cron, ogni 15 minuti).
+ * Controllo periodico dei necrologi (WP-Cron, ogni minuto).
  *
- * Confronta la lista del portale con quella vista l'ultima volta e, per i
- * necrologi nuovi, modificati o rimossi:
+ * Chiede al portale solo i necrologi modificati dall'ultimo controllo
+ * (parametro "modificati_dal"), li unisce alla copia locale della lista e,
+ * per i necrologi nuovi, modificati o rimossi:
  * - aggiorna le date di ultima modifica usate dalla sitemap;
  * - svuota la cache del plugin e quella di pagina dei principali plugin di
  *   cache, cosi' le correzioni (es. un orario) compaiono subito;
  * - avvisa Bing e gli altri motori aderenti tramite IndexNow.
+ *
+ * La lista completa viene riscaricata solo al primo controllo, una volta al
+ * giorno come verifica, dopo che il controllo e' rimasto fermo per qualche
+ * minuto, o se il portale non gestisce gli aggiornamenti incrementali.
  */
 class PortaleFunebreNecrologi_Monitor {
 
     const EVENTO     = 'portale_funebre_necrologi_controllo';
-    const INTERVALLO = 'portale_funebre_necrologi_15_minuti';
+    const INTERVALLO = 'portale_funebre_necrologi_1_minuto';
 
     const OPZIONE_REGISTRO = 'portale_funebre_necrologi_registro';
     const OPZIONE_STATO    = 'portale_funebre_necrologi_monitor_stato';
     const OPZIONE_CHIAVE   = 'portale_funebre_necrologi_indexnow_chiave';
+    /** Lista del portale cosi' com'e' arrivata, base per unire gli aggiornamenti incrementali. */
+    const OPZIONE_LISTA    = 'portale_funebre_necrologi_lista_portale';
+
+    const BLOCCO = 'pfn_controllo_in_corso';
+
+    /** Oltre questo intervallo senza controlli il controllo e' considerato fermo. */
+    const MAX_PAUSA = 5 * MINUTE_IN_SECONDS;
+
+    /** Ogni quanto si riscarica comunque la lista completa, come verifica. */
+    const INTERVALLO_COMPLETO = DAY_IN_SECONDS;
+
+    /** Margine sull'istante di partenza, per non perdere modifiche salvate a cavallo di due controlli. */
+    const SOVRAPPOSIZIONE = 2 * MINUTE_IN_SECONDS;
 
     const INDEXNOW_ENDPOINT = 'https://api.indexnow.org/indexnow';
     const INDEXNOW_MAX_URL  = 10000;
@@ -35,14 +53,24 @@ class PortaleFunebreNecrologi_Monitor {
     }
 
     static function Intervalli($intervalli) {
-        $intervalli[self::INTERVALLO] = ['interval' => 15 * MINUTE_IN_SECONDS, 'display' => 'Ogni 15 minuti (Portale Funebre Necrologi)'];
+        $intervalli[self::INTERVALLO] = ['interval' => MINUTE_IN_SECONDS, 'display' => 'Ogni minuto (Portale Funebre Necrologi)'];
         return $intervalli;
     }
 
     static function Pianifica() {
+        // Le versioni precedenti pianificavano il controllo ogni 15 minuti: va ripianificato.
+        if (wp_next_scheduled(self::EVENTO) && wp_get_schedule(self::EVENTO) !== self::INTERVALLO) {
+            wp_clear_scheduled_hook(self::EVENTO);
+        }
         if (!wp_next_scheduled(self::EVENTO)) {
             wp_schedule_event(time() + MINUTE_IN_SECONDS, self::INTERVALLO, self::EVENTO);
         }
+    }
+
+    /** Il controllo di ogni minuto sta girando (l'ultimo e' di pochi minuti fa). */
+    static function IsAttivo() {
+        $stato = self::Stato();
+        return !empty($stato['controllo']) && time() - (int) $stato['controllo'] <= self::MAX_PAUSA;
     }
 
     /** Alla disattivazione del plugin. */
@@ -72,11 +100,105 @@ class PortaleFunebreNecrologi_Monitor {
 
         if (!PortaleFunebreNecrologi::IsConfigurato()) { return; }
 
-        // Dati freschi: la cache breve della lista viene saltata.
-        PortaleFunebreNecrologi_Repository::SvuotaLista();
-        $lista = PortaleFunebreNecrologi_Repository::GetLista();
+        // Un controllo alla volta: con l'intervallo di un minuto un portale lento potrebbe farli sovrapporre.
+        if (get_transient(self::BLOCCO)) { return; }
+        set_transient(self::BLOCCO, 1, 2 * MINUTE_IN_SECONDS);
 
-        if (is_wp_error($lista)) { return; }
+        try {
+            self::Esegui();
+        } finally {
+            delete_transient(self::BLOCCO);
+        }
+    }
+
+    /**
+     * Lista aggiornata del portale (non filtrata), con l'istante del portale da
+     * cui partire al controllo successivo.
+     *
+     * @return array{0:array,1:int,2:bool}|null [lista, prossimo "modificati_dal", incrementale] o null se il portale non risponde.
+     */
+    private static function ListaAggiornata(array $stato) {
+
+        $api  = new PortaleFunebreNecrologi_API();
+        $ora  = time();
+        $base = get_option(self::OPZIONE_LISTA);
+
+        $completo = !is_array($base)
+            || empty($stato['portale_ora'])
+            || empty($stato['completo']) || $ora - (int) $stato['completo'] >= self::INTERVALLO_COMPLETO
+            || empty($stato['controllo']) || $ora - (int) $stato['controllo'] > self::MAX_PAUSA;
+
+        if (!$completo) {
+            $risposta = $api->TrovaNecrologiModificati(max(1, (int) $stato['portale_ora'] - self::SOVRAPPOSIZIONE));
+            $unita    = self::UnisciModifiche($base, $risposta);
+            if ($unita) { return [$unita[0], $unita[1], true]; }
+            // Il portale ha risposto con la lista intera (versione senza aggiornamenti incrementali).
+            if (self::IsLista($risposta)) { return [$risposta, $ora, false]; }
+            if (!is_object($risposta)) { return null; }
+        }
+
+        $risposta = $api->TrovaTuttiNecrologi();
+
+        if (!self::IsLista($risposta)) { return null; }
+
+        // La lista completa non dice l'ora del portale: si riparte da quella del sito, con un margine ampio
+        // per eventuali differenze tra gli orologi. Dal controllo successivo vale l'ora restituita dal portale.
+        return [$risposta, $ora - 10 * MINUTE_IN_SECONDS, false];
+    }
+
+    /**
+     * Lista di necrologi valida. Un errore del portale puo' arrivare come
+     * array di messaggi (es. ["Accesso non consentito"]): non va scambiato per
+     * una lista vuota, che farebbe risultare rimossi tutti i necrologi.
+     */
+    private static function IsLista($risposta) {
+        if (!is_array($risposta)) { return false; }
+        foreach ($risposta as $voce) {
+            if (!is_object($voce)) { return false; }
+        }
+        return true;
+    }
+
+    /**
+     * Applica alla lista precedente i necrologi modificati, nell'ordine e con
+     * le sole voci indicate dal portale (le assenti sono state rimosse).
+     *
+     * @return array{0:array,1:int}|null null se la risposta non e' incrementale o non torna con la lista precedente.
+     */
+    private static function UnisciModifiche(array $base, $risposta) {
+
+        if (!is_object($risposta) || !isset($risposta->ora, $risposta->modificati, $risposta->slug)
+            || !is_array($risposta->modificati) || !is_array($risposta->slug)) {
+            return null;
+        }
+
+        $per_slug = [];
+        foreach (array_merge($base, $risposta->modificati) as $dati) {
+            if (is_object($dati) && !empty($dati->slug)) { $per_slug[$dati->slug] = $dati; }
+        }
+
+        $lista = [];
+        foreach ($risposta->slug as $slug) {
+            // Un necrologio pubblicato che non si conosce: meglio riscaricare tutto.
+            if (!isset($per_slug[$slug])) { return null; }
+            $lista[] = $per_slug[$slug];
+        }
+
+        return [$lista, (int) $risposta->ora];
+    }
+
+    private static function Esegui() {
+
+        $stato      = self::Stato();
+        $aggiornata = self::ListaAggiornata($stato);
+
+        if ($aggiornata === null) { return; }
+
+        list($grezza, $portale_ora, $incrementale) = $aggiornata;
+
+        update_option(self::OPZIONE_LISTA, $grezza, false);
+        PortaleFunebreNecrologi_Repository::ImpostaLista($grezza);
+        $lista = PortaleFunebreNecrologi_Repository::FiltraLista($grezza);
 
         $prima    = self::Registro();
         $primo    = !get_option(self::OPZIONE_REGISTRO);
@@ -85,6 +207,11 @@ class PortaleFunebreNecrologi_Monitor {
         $cambiati = [];
         $necrologi = [];
 
+        $stato['portale_ora']  = $portale_ora;
+        $stato['incrementale'] = $incrementale;
+        if (!$incrementale) { $stato['completo'] = $ora; }
+
+        // L'impronta si calcola su tutta la lista (non serve il portale): conta come "cambiato" solo cio' che e' davvero diverso.
         foreach ($lista as $dati) {
             $necro    = new PortaleFunebreNecrologi_Necrologio($dati);
             $slug     = $necro->Slug();
@@ -107,7 +234,6 @@ class PortaleFunebreNecrologi_Monitor {
 
         update_option(self::OPZIONE_REGISTRO, $registro, false);
 
-        $stato              = self::Stato();
         $stato['controllo'] = $ora;
 
         // Copia ridotta della foto per le anteprime dei social, pronta prima che qualcuno condivida il necrologio.

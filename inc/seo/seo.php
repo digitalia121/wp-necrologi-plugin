@@ -161,10 +161,34 @@ class PortaleFunebreNecrologi_Seo {
         return self::IsNecrologio() ? '' : $shortlink;
     }
 
-    /** I link oEmbed della pagina contenitore non descrivono il necrologio. */
+    /**
+     * Toglie dall'<head> quello che descrive la pagina contenitore e non il necrologio:
+     * - i link oEmbed;
+     * - l'Open Graph di Avada (opzione "Open Graph Meta Tags"), che prende la
+     *   description dal contenuto della pagina, cioe' dagli shortcode del builder
+     *   (es. "columns=1 ..."), e duplica og:title, og:url e og:description.
+     */
     static function PulisciHead() {
         if (!self::IsNecrologio()) { return; }
         remove_action('wp_head', 'wp_oembed_add_discovery_links');
+        self::RimuoviCallback('wp_head', 'Avada_Head', 'insert_og_meta');
+    }
+
+    /** Rimuove da un hook il metodo di un oggetto di cui non si ha l'istanza (es. quelli del tema). */
+    private static function RimuoviCallback($hook, $classe, $metodo) {
+
+        global $wp_filter;
+
+        if (empty($wp_filter[$hook]) || !($wp_filter[$hook] instanceof WP_Hook)) { return; }
+
+        foreach ($wp_filter[$hook]->callbacks as $priorita => $callbacks) {
+            foreach ($callbacks as $callback) {
+                $funzione = $callback['function'];
+                if (is_array($funzione) && is_object($funzione[0]) && $funzione[0] instanceof $classe && $funzione[1] === $metodo) {
+                    remove_action($hook, $funzione, $priorita);
+                }
+            }
+        }
     }
 
     private static function Imposta404() {

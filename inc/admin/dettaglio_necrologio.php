@@ -102,7 +102,6 @@ $dati_editor = [
 
 /* Stato della cache del necrologio. */
 $cache         = PortaleFunebreNecrologi_Repository::StatoCacheSingolo($slug);
-$cache_minuti  = (int) round(PortaleFunebreNecrologi_Repository::Durata() / MINUTE_IN_SECONDS);
 $registro      = PortaleFunebreNecrologi_Monitor::Registro();
 $registro      = isset($registro[$slug]) ? $registro[$slug] : null;
 $file_social   = PortaleFunebreNecrologi::FileImmagineShare($necro->Immagine());
@@ -472,7 +471,7 @@ $chips = static function ($bersaglio) {
                                         <?php } else { ?>
                                             Non presente: verrà letta dal portale alla prossima visita.
                                         <?php } ?>
-                                        <span class="description">Durata: <?php echo esc_html($cache_minuti); ?> minuti.</span>
+                                        <span class="description"><?php echo PortaleFunebreNecrologi_Monitor::IsAttivo() ? 'Si rinnova quando il necrologio viene modificato sul portale (controllo ogni minuto).' : 'Controllo ogni minuto non attivo: si rinnova ogni 5 minuti.'; ?></span>
                                     </span>
                                 </li>
                                 <li>
@@ -501,7 +500,7 @@ $chips = static function ($bersaglio) {
                                     <span class="dashicons dashicons-update<?php echo $registro ? ' is-ok' : ''; ?>" aria-hidden="true"></span>
                                     <span><strong>Controllo aggiornamenti</strong><br>
                                         <?php if (!$registro) { ?>
-                                            Non ancora controllato (avviene ogni 15 minuti).
+                                            Non ancora controllato (avviene ogni minuto).
                                         <?php } else { ?>
                                             <?php echo $registro['c'] ? 'Rilevato il ' . esc_html(wp_date('j F, H:i', $registro['c'])) . '.' : 'Già presente al primo controllo.'; ?>
                                             <?php echo $registro['m'] && $registro['m'] !== $registro['c'] ? ' Ultima modifica rilevata il ' . esc_html(wp_date('j F, H:i', $registro['m'])) . '.' : ''; ?>

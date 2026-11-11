@@ -98,6 +98,20 @@ class PortaleFunebreNecrologi_API {
     }
 
     /**
+     * Aggiornamento incrementale: i necrologi pubblicati modificati dal
+     * timestamp indicato. Risposta: {ora, modificati: [...], slug: [...]}.
+     * Un portale che non gestisce il parametro risponde con la lista completa
+     * (un array): chi chiama deve accorgersene.
+     */
+    public function TrovaNecrologiModificati(int $dal) {
+
+        $res2 = self::portale_call('api/necrologies_list'.$this->urlParams,[ 'get_full' => false, 'modificati_dal' => $dal ]);
+
+        return self::decodifica($res2);
+
+    }
+
+    /**
      * Decodifica la risposta del portale. Restituisce null se la chiamata
      * non e' andata a buon fine o se la risposta non e' JSON valido.
      */

@@ -4,7 +4,7 @@ Tags: obituaries, condolences, funeral, memorials, necrologi
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 1.1.1
+Stable tag: 1.1.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -81,3 +81,9 @@ To receive support, contact us at [support@portalefunebre.com](mailto:support@po
 * Sharing: with Yoast SEO active, the obituary photo is now the only Open Graph image, so WhatsApp no longer shows the image of the page hosting the obituary
 * Condolence form editor: new compact settings for the submit button, with colors for normal, hover, pressed and focus states, border, spacing, text style, hover effect, transition and shadow
 * Condolence form editor: removed the "Buttons text" color from the Colors section (still applied by the quick color combinations)
+
+= 1.1.2 =
+* Portal data is now checked every minute and only the obituaries modified since the last check are downloaded and refreshed (requires the updated portal; with an older portal the full list is compared and only the changed obituaries are refreshed)
+* Removed the "data refresh interval" setting: cached data no longer expires every few minutes, it is refreshed when the obituary changes on the portal (every 5 minutes if WP-Cron is not running)
+* Removed obituaries are detected even when the portal response is incremental; a portal error message is no longer mistaken for an empty obituary list
+* Sharing: on single obituaries the Avada theme Open Graph tags are removed, so Facebook no longer shows the page builder code as the description

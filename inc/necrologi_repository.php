@@ -5,8 +5,10 @@ if (!defined('ABSPATH')) { exit; }
 /**
  * Unico punto di lettura dei necrologi dal portale, con cache.
  *
- * - Cache breve (transient, durata impostabile): evita di interrogare il
- *   portale a ogni visita.
+ * - Copia usata dal sito (transient): non scade a tempo breve, perche' il
+ *   controllo di ogni minuto (PortaleFunebreNecrologi_Monitor) la svuota solo
+ *   per i necrologi modificati sul portale. Se quel controllo non gira
+ *   (WP-Cron fermo) la copia torna a durare pochi minuti.
  * - Copia di riserva (7 giorni): usata quando il portale non risponde, cosi'
  *   le pagine restano online anche durante un disservizio.
  * - Anche l'esito "necrologio inesistente" viene messo in cache per qualche
@@ -16,8 +18,10 @@ if (!defined('ABSPATH')) { exit; }
  */
 class PortaleFunebreNecrologi_Repository {
 
-    const DURATA_PREDEFINITA = 10;                 // minuti
-    const DURATE             = [5, 10, 15, 30, 60]; // minuti selezionabili nelle impostazioni
+    /** Con il controllo di ogni minuto attivo: le modifiche arrivano da li', la scadenza e' solo una rete di sicurezza. */
+    const DURATA_SINCRONIZZATA   = DAY_IN_SECONDS;
+    /** Senza il controllo di ogni minuto i dati si rinnovano a tempo. */
+    const DURATA_SENZA_CONTROLLO = 5 * MINUTE_IN_SECONDS;
     const DURATA_RISERVA     = WEEK_IN_SECONDS;
     const DURATA_ASSENTE     = 5 * MINUTE_IN_SECONDS;
 
@@ -81,14 +85,10 @@ class PortaleFunebreNecrologi_Repository {
 
         $risposta = self::Api() ? self::Api()->TrovaTuttiNecrologi() : null;
 
-        if (is_array($risposta)) {
-            // Come in passato, si scartano le voci senza nome.
-            $lista = array_values(array_filter($risposta, static function ($necro) {
-                return is_object($necro) && !empty($necro->nome_defunto) && !empty($necro->slug);
-            }));
-            set_transient(self::Chiave('lista'), $lista, self::Durata());
-            set_transient('pfn_r_lista', $lista, self::DURATA_RISERVA);
-            return self::$memoria['lista'] = $lista;
+        // Un errore puo' arrivare come array di messaggi (es. ["Accesso non consentito"]): solo oggetti.
+        if (is_array($risposta) && count(array_filter($risposta, 'is_object')) === count($risposta)) {
+            self::ImpostaLista($risposta);
+            return self::$memoria['lista'];
         }
 
         $riserva = get_transient('pfn_r_lista');
@@ -203,15 +203,30 @@ class PortaleFunebreNecrologi_Repository {
         unset(self::$memoria['lista']);
     }
 
-    /** Durata della cache breve, in secondi. */
+    /**
+     * Salva la lista aggiornata dal controllo periodico, gia' nel formato di
+     * GetLista(): il sito la usa subito senza interrogare il portale.
+     */
+    static function ImpostaLista(array $lista) {
+        $lista = self::FiltraLista($lista);
+        set_transient(self::Chiave('lista'), $lista, self::Durata());
+        set_transient('pfn_r_lista', $lista, self::DURATA_RISERVA);
+        self::$memoria['lista'] = $lista;
+    }
+
+    /** Come in passato, si scartano le voci senza nome o senza slug. */
+    static function FiltraLista(array $lista) {
+        return array_values(array_filter($lista, static function ($necro) {
+            return is_object($necro) && !empty($necro->nome_defunto) && !empty($necro->slug);
+        }));
+    }
+
+    /** Durata della copia usata dal sito, in secondi. */
     static function Durata() {
 
-        $impostazioni = PortaleFunebreNecrologi::GetImpostazioni();
-        $minuti       = ($impostazioni && isset($impostazioni['seo_cache_minuti'])) ? absint($impostazioni['seo_cache_minuti']) : self::DURATA_PREDEFINITA;
+        $durata = PortaleFunebreNecrologi_Monitor::IsAttivo() ? self::DURATA_SINCRONIZZATA : self::DURATA_SENZA_CONTROLLO;
 
-        if (!in_array($minuti, self::DURATE, true)) { $minuti = self::DURATA_PREDEFINITA; }
-
-        return (int) apply_filters('portale_funebre_necrologi_durata_cache', $minuti * MINUTE_IN_SECONDS);
+        return (int) apply_filters('portale_funebre_necrologi_durata_cache', $durata);
     }
 
     /**
