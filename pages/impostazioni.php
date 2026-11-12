@@ -339,9 +339,9 @@ if (PortaleFunebreNecrologi_Seo_Yoast::IsAttivo()) {
 
 $seo_monitor = PortaleFunebreNecrologi_Monitor::Stato();
 if (empty($seo_monitor['controllo'])) {
-    $seo_stato[] = ['warn', 'Il controllo degli aggiornamenti dal portale (ogni minuto) non è ancora stato eseguito.'];
+    $seo_stato[] = ['warn', 'Il controllo degli aggiornamenti dal portale non è ancora stato eseguito: parte alla prima visita di una pagina con i necrologi (o entro 15 minuti con WP-Cron).'];
 } elseif (!PortaleFunebreNecrologi_Monitor::IsAttivo()) {
-    $seo_stato[] = ['warn', 'L\'ultimo controllo degli aggiornamenti dal portale risale al ' . wp_date('j F Y, H:i', $seo_monitor['controllo']) . ': WP-Cron non sta girando ogni minuto (sito con poche visite o DISABLE_WP_CRON senza un cron di sistema). Nel frattempo i dati si rinnovano ogni 5 minuti. Per il controllo al minuto serve un cron di sistema che chiami wp-cron.php ogni minuto.'];
+    $seo_stato[] = ['warn', 'L\'ultimo controllo degli aggiornamenti dal portale risale al ' . wp_date('j F Y, H:i', $seo_monitor['controllo']) . ': nessuna visita recente alle pagine dei necrologi e WP-Cron fermo (DISABLE_WP_CRON senza un cron di sistema?). I dati vengono comunque verificati alla prima visita, dopo il caricamento della pagina.'];
 } else {
     $seo_stato[] = ['ok', 'Ultimo controllo degli aggiornamenti dal portale: ' . wp_date('j F Y, H:i', $seo_monitor['controllo']) . '.'];
     if (isset($seo_monitor['incrementale']) && !$seo_monitor['incrementale'] && !empty($seo_monitor['completo']) && $seo_monitor['completo'] === $seo_monitor['controllo']) {
@@ -795,8 +795,8 @@ foreach (array_keys(PortaleFunebreNecrologi_Seo::SEGNAPOSTO) as $segnaposto) {
 
             <div class="dgplugin-input-wrap">
                 <label>Aggiornamento dei dati dal portale</label>
-                <p>Ogni minuto, solo i necrologi modificati.</p>
-                <span class="pfn-seo-hint">Il sito chiede al portale i necrologi cambiati dall'ultimo controllo e rinnova solo quelli; la lista completa viene riletta una volta al giorno come verifica. Al salvataggio delle impostazioni la copia locale viene rinnovata.</span>
+                <p>A ogni visita, dopo il caricamento della pagina.</p>
+                <span class="pfn-seo-hint">Lista, slider e necrologio singolo, una volta caricati, chiedono al sito se sul portale ci sono necrologi nuovi o modificati e si aggiornano subito, anche se la pagina arriva da una cache. Il portale viene interrogato al massimo ogni 15 secondi e solo per i necrologi cambiati; WP-Cron ripete il controllo ogni 15 minuti per sitemap e IndexNow, e la lista completa viene riletta una volta al giorno come verifica. Al salvataggio delle impostazioni la copia locale viene rinnovata.</span>
             </div>
 
             <div class="dgplugin-input-wrap">

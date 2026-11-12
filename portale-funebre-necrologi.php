@@ -2,7 +2,7 @@
 Plugin Name: Portale Funebre Necrologi
 Plugin URI: http://www.portalefunebre.com
 Description: Gestione dei necrologi sul tuo sito.
-Version: 1.1.2
+Version: 1.1.3
 Author: Digitalia Srl
 Author URI: https://digitalia.srl
 License: GPL2
@@ -284,24 +284,83 @@ class PortaleFunebreNecrologi extends PortaleFunebreNecrologi\PluginBase {
 
 }
 
-// Letture via ajax: servono solo come ripiego quando il markup non e' generato lato server.
+// Letture via ajax (ripiego quando il markup non e' generato lato server): dati sempre verificati sul portale.
 PortaleFunebreNecrologi::add_ajax_call('get_necrologio_singolo', function ($var) {
     if (!PortaleFunebreNecrologi::$inInst) { return; }
     $slug = isset($var['slug']) ? sanitize_title($var['slug']) : '';
-    $dati = PortaleFunebreNecrologi_Repository::GetSingolo($slug);
+    $dati = PortaleFunebreNecrologi_Repository::RinfrescaSingolo($slug);
     return is_object($dati) ? $dati : null;
-});
+}, true);
 PortaleFunebreNecrologi::add_ajax_call('get_lista_necrologi', function () {
     if (!PortaleFunebreNecrologi::$inInst) { return; }
-    $lista = PortaleFunebreNecrologi_Repository::GetLista();
+    $lista = PortaleFunebreNecrologi_Repository::RinfrescaLista();
     return is_wp_error($lista) ? [] : $lista;
-});
+}, true);
 PortaleFunebreNecrologi::add_ajax_call('get_anteprima_necrologi', function () {
     if (!PortaleFunebreNecrologi::$inInst) { return; }
     // Lo slider ha sempre ricevuto tutti i necrologi: stessa lista (e stessa cache) della lista.
-    $lista = PortaleFunebreNecrologi_Repository::GetLista();
+    $lista = PortaleFunebreNecrologi_Repository::RinfrescaLista();
     return is_wp_error($lista) ? [] : $lista;
-});
+}, true);
+
+/*
+ * Verifica dopo il caricamento della pagina (lista e slider generati lato
+ * server): la pagina manda le impronte dei necrologi che mostra, nell'ordine;
+ * la risposta e' "invariato" oppure l'elenco aggiornato, con il markup solo
+ * per i necrologi nuovi o modificati.
+ */
+PortaleFunebreNecrologi::add_ajax_call('aggiorna_necrologi', function ($var) {
+    if (!PortaleFunebreNecrologi::$inInst) { return ['stato' => 'errore']; }
+
+    $slider = isset($var['tipo']) && $var['tipo'] === 'slider';
+    $noti   = isset($var['noti']) ? array_values(array_filter(explode(',', (string) $var['noti']), static function ($h) {
+        return (bool) preg_match('/^[a-f0-9]{12}$/', $h);
+    })) : [];
+
+    $necrologi = PortaleFunebreNecrologi_Render::Necrologi(true);
+    if ($necrologi === null) { return ['stato' => 'errore']; }
+    if (!$slider) { $necrologi = PortaleFunebreNecrologi_Render::Ordina($necrologi); }
+
+    $voci    = [];
+    $impronte = [];
+    $noti_set = array_flip($noti);
+
+    foreach ($necrologi as $necro) {
+        $h          = PortaleFunebreNecrologi_Repository::Impronta($necro->Dati());
+        $impronte[] = $h;
+        $voce       = ['h' => $h];
+        if (!isset($noti_set[$h])) {
+            $voce['html'] = $slider ? PortaleFunebreNecrologi_Render::Slide($necro) : PortaleFunebreNecrologi_Render::Loop($necro);
+        }
+        $voci[] = $voce;
+    }
+
+    if ($impronte === $noti) { return ['stato' => 'invariato']; }
+
+    return ['stato' => 'aggiornato', 'voci' => $voci];
+}, true);
+
+/* Verifica dopo il caricamento della pagina del singolo necrologio. */
+PortaleFunebreNecrologi::add_ajax_call('aggiorna_necrologio', function ($var) {
+    if (!PortaleFunebreNecrologi::$inInst) { return ['stato' => 'errore']; }
+
+    $slug = isset($var['slug']) ? sanitize_title($var['slug']) : '';
+    $noto = isset($var['h']) ? (string) $var['h'] : '';
+
+    if ($slug === '') { return ['stato' => 'errore']; }
+
+    $dati = PortaleFunebreNecrologi_Repository::RinfrescaSingolo($slug);
+
+    if ($dati === false) { return ['stato' => 'rimosso']; }
+    if (!is_object($dati)) { return ['stato' => 'errore']; }
+
+    $h = PortaleFunebreNecrologi_Repository::Impronta($dati);
+
+    if ($h === $noto) { return ['stato' => 'invariato']; }
+
+    return array_merge(['stato' => 'aggiornato'], PortaleFunebreNecrologi_Render::PartiSingolo(new PortaleFunebreNecrologi_Necrologio($dati)));
+}, true);
+
 PortaleFunebreNecrologi::add_ajax_call('invia_cordoglio_api', function ($var) {
     if (!PortaleFunebreNecrologi::$inInst) { return; }
 

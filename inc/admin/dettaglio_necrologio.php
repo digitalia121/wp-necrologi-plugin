@@ -471,7 +471,7 @@ $chips = static function ($bersaglio) {
                                         <?php } else { ?>
                                             Non presente: verrà letta dal portale alla prossima visita.
                                         <?php } ?>
-                                        <span class="description"><?php echo PortaleFunebreNecrologi_Monitor::IsAttivo() ? 'Si rinnova quando il necrologio viene modificato sul portale (controllo ogni minuto).' : 'Controllo ogni minuto non attivo: si rinnova ogni 5 minuti.'; ?></span>
+                                        <span class="description"><?php echo PortaleFunebreNecrologi_Monitor::IsAttivo() ? 'Si rinnova quando il necrologio viene modificato sul portale (verifica a ogni visita, dopo il caricamento della pagina).' : 'Nessun controllo recente: si rinnova ogni 5 minuti e alla prossima visita.'; ?></span>
                                     </span>
                                 </li>
                                 <li>
@@ -500,7 +500,7 @@ $chips = static function ($bersaglio) {
                                     <span class="dashicons dashicons-update<?php echo $registro ? ' is-ok' : ''; ?>" aria-hidden="true"></span>
                                     <span><strong>Controllo aggiornamenti</strong><br>
                                         <?php if (!$registro) { ?>
-                                            Non ancora controllato (avviene ogni minuto).
+                                            Non ancora controllato (avviene alla prossima visita o entro 15 minuti).
                                         <?php } else { ?>
                                             <?php echo $registro['c'] ? 'Rilevato il ' . esc_html(wp_date('j F, H:i', $registro['c'])) . '.' : 'Già presente al primo controllo.'; ?>
                                             <?php echo $registro['m'] && $registro['m'] !== $registro['c'] ? ' Ultima modifica rilevata il ' . esc_html(wp_date('j F, H:i', $registro['m'])) . '.' : ''; ?>

@@ -3,7 +3,14 @@
 if (!defined('ABSPATH')) { exit; }
 
 /**
- * Controllo periodico dei necrologi (WP-Cron, ogni minuto).
+ * Controllo dei necrologi modificati sul portale.
+ *
+ * Viene avviato soprattutto dalle visite: lista e slider, dopo il caricamento
+ * della pagina, chiedono via ajax se ci sono novita' e il controllo parte (al
+ * massimo una volta ogni pochi secondi, vedi
+ * PortaleFunebreNecrologi_Repository::RinfrescaLista). WP-Cron lo esegue
+ * solo ogni 15 minuti come rete di sicurezza per sitemap e IndexNow, anche
+ * quando il sito non riceve visite.
  *
  * Chiede al portale solo i necrologi modificati dall'ultimo controllo
  * (parametro "modificati_dal"), li unisce alla copia locale della lista e,
@@ -20,7 +27,7 @@ if (!defined('ABSPATH')) { exit; }
 class PortaleFunebreNecrologi_Monitor {
 
     const EVENTO     = 'portale_funebre_necrologi_controllo';
-    const INTERVALLO = 'portale_funebre_necrologi_1_minuto';
+    const INTERVALLO = 'portale_funebre_necrologi_15_minuti';
 
     const OPZIONE_REGISTRO = 'portale_funebre_necrologi_registro';
     const OPZIONE_STATO    = 'portale_funebre_necrologi_monitor_stato';
@@ -30,14 +37,17 @@ class PortaleFunebreNecrologi_Monitor {
 
     const BLOCCO = 'pfn_controllo_in_corso';
 
-    /** Oltre questo intervallo senza controlli il controllo e' considerato fermo. */
-    const MAX_PAUSA = 5 * MINUTE_IN_SECONDS;
+    /** Oltre questo intervallo senza controlli (ne' da visite ne' da WP-Cron) il controllo e' considerato fermo. */
+    const MAX_PAUSA = 20 * MINUTE_IN_SECONDS;
 
     /** Ogni quanto si riscarica comunque la lista completa, come verifica. */
     const INTERVALLO_COMPLETO = DAY_IN_SECONDS;
 
     /** Margine sull'istante di partenza, per non perdere modifiche salvate a cavallo di due controlli. */
     const SOVRAPPOSIZIONE = 2 * MINUTE_IN_SECONDS;
+
+    /** Timestamp nel futuro (1 gennaio 2100): usato per chiedere solo l'ora al portale. */
+    const FUTURO = 4102444800;
 
     const INDEXNOW_ENDPOINT = 'https://api.indexnow.org/indexnow';
     const INDEXNOW_MAX_URL  = 10000;
@@ -53,12 +63,12 @@ class PortaleFunebreNecrologi_Monitor {
     }
 
     static function Intervalli($intervalli) {
-        $intervalli[self::INTERVALLO] = ['interval' => MINUTE_IN_SECONDS, 'display' => 'Ogni minuto (Portale Funebre Necrologi)'];
+        $intervalli[self::INTERVALLO] = ['interval' => 15 * MINUTE_IN_SECONDS, 'display' => 'Ogni 15 minuti (Portale Funebre Necrologi)'];
         return $intervalli;
     }
 
     static function Pianifica() {
-        // Le versioni precedenti pianificavano il controllo ogni 15 minuti: va ripianificato.
+        // Le versioni precedenti pianificavano il controllo con un altro intervallo: va ripianificato.
         if (wp_next_scheduled(self::EVENTO) && wp_get_schedule(self::EVENTO) !== self::INTERVALLO) {
             wp_clear_scheduled_hook(self::EVENTO);
         }
@@ -67,7 +77,7 @@ class PortaleFunebreNecrologi_Monitor {
         }
     }
 
-    /** Il controllo di ogni minuto sta girando (l'ultimo e' di pochi minuti fa). */
+    /** Il controllo sta girando (l'ultimo, da una visita o da WP-Cron, e' recente). */
     static function IsAttivo() {
         $stato = self::Stato();
         return !empty($stato['controllo']) && time() - (int) $stato['controllo'] <= self::MAX_PAUSA;
@@ -100,7 +110,7 @@ class PortaleFunebreNecrologi_Monitor {
 
         if (!PortaleFunebreNecrologi::IsConfigurato()) { return; }
 
-        // Un controllo alla volta: con l'intervallo di un minuto un portale lento potrebbe farli sovrapporre.
+        // Un controllo alla volta: visite e WP-Cron potrebbero farli sovrapporre.
         if (get_transient(self::BLOCCO)) { return; }
         set_transient(self::BLOCCO, 1, 2 * MINUTE_IN_SECONDS);
 
@@ -109,6 +119,42 @@ class PortaleFunebreNecrologi_Monitor {
         } finally {
             delete_transient(self::BLOCCO);
         }
+    }
+
+    /** Lavori rimandati a dopo la risposta (solo nelle richieste ajax avviate da una visita). */
+    private static $coda = [];
+
+    /**
+     * Esegue un lavoro non urgente (svuotare cache di pagina, preparare
+     * immagini, avvisare IndexNow): subito in WP-Cron, dopo l'invio della
+     * risposta nelle richieste ajax, cosi' la pagina riceve i dati nuovi
+     * senza aspettare.
+     */
+    static function Differisci(callable $lavoro) {
+
+        if (!wp_doing_ajax()) { $lavoro(); return; }
+
+        if (!self::$coda) { add_action('shutdown', [__CLASS__, 'EseguiCoda'], 0); }
+
+        self::$coda[] = $lavoro;
+    }
+
+    /** @internal Hook "shutdown": chiude la risposta al browser, poi esegue i lavori rimandati. */
+    static function EseguiCoda() {
+
+        $coda       = self::$coda;
+        self::$coda = [];
+
+        if (!$coda) { return; }
+
+        ignore_user_abort(true);
+
+        if (function_exists('fastcgi_finish_request') || function_exists('litespeed_finish_request')) {
+            while (ob_get_level() > 0) { ob_end_flush(); }
+            if (function_exists('fastcgi_finish_request')) { fastcgi_finish_request(); } else { litespeed_finish_request(); }
+        }
+
+        foreach ($coda as $lavoro) { $lavoro(); }
     }
 
     /**
@@ -128,6 +174,14 @@ class PortaleFunebreNecrologi_Monitor {
             || empty($stato['completo']) || $ora - (int) $stato['completo'] >= self::INTERVALLO_COMPLETO
             || empty($stato['controllo']) || $ora - (int) $stato['controllo'] > self::MAX_PAUSA;
 
+        /*
+         * Il punto di partenza del controllo successivo e' sempre l'ora del
+         * portale (timestamp Unix restituito dall'API), mai quella del sito:
+         * cosi' fusi orari diversi o un orologio sbagliato su uno dei due
+         * server non fanno perdere modifiche.
+         */
+        $portale_ora = null;
+
         if (!$completo) {
             $risposta = $api->TrovaNecrologiModificati(max(1, (int) $stato['portale_ora'] - self::SOVRAPPOSIZIONE));
             $unita    = self::UnisciModifiche($base, $risposta);
@@ -135,15 +189,25 @@ class PortaleFunebreNecrologi_Monitor {
             // Il portale ha risposto con la lista intera (versione senza aggiornamenti incrementali).
             if (self::IsLista($risposta)) { return [$risposta, $ora, false]; }
             if (!is_object($risposta)) { return null; }
+            // Risposta incrementale che non torna con la lista locale: si riscarica tutto, partendo dall'ora appena ricevuta.
+            if (isset($risposta->ora)) { $portale_ora = (int) $risposta->ora; }
+        }
+
+        if ($portale_ora === null) {
+            // Prima della lista completa si chiede l'ora al portale: "modificati dal" nel futuro, quindi nessun necrologio nella risposta.
+            $orologio = $api->TrovaNecrologiModificati(self::FUTURO);
+            // Portale senza aggiornamenti incrementali: la risposta e' gia' la lista completa.
+            if (self::IsLista($orologio)) { return [$orologio, $ora, false]; }
+            if (is_object($orologio) && isset($orologio->ora)) { $portale_ora = (int) $orologio->ora; }
         }
 
         $risposta = $api->TrovaTuttiNecrologi();
 
         if (!self::IsLista($risposta)) { return null; }
 
-        // La lista completa non dice l'ora del portale: si riparte da quella del sito, con un margine ampio
-        // per eventuali differenze tra gli orologi. Dal controllo successivo vale l'ora restituita dal portale.
-        return [$risposta, $ora - 10 * MINUTE_IN_SECONDS, false];
+        // L'ora e' stata chiesta prima della lista: le modifiche salvate nel frattempo rientrano nel controllo successivo.
+        // Solo se il portale non l'ha restituita si ripiega sull'ora del sito, con un margine ampio.
+        return [$risposta, $portale_ora !== null ? $portale_ora : $ora - 10 * MINUTE_IN_SECONDS, false];
     }
 
     /**
@@ -236,20 +300,29 @@ class PortaleFunebreNecrologi_Monitor {
 
         $stato['controllo'] = $ora;
 
-        // Copia ridotta della foto per le anteprime dei social, pronta prima che qualcuno condivida il necrologio.
-        foreach (array_slice($cambiati, 0, self::IMMAGINI_PER_CONTROLLO) as $slug) {
-            $necrologi[$slug]->ImmagineSocial();
-        }
+        update_option(self::OPZIONE_STATO, $stato, false);
 
         $toccati = array_merge($cambiati, $rimossi);
 
-        if ($toccati) {
+        // La cache del plugin si svuota subito: la richiesta che ha avviato il controllo deve gia' leggere i dati nuovi.
+        if ($toccati && !$primo) {
+            foreach ($toccati as $slug) { PortaleFunebreNecrologi_Repository::SvuotaSingolo($slug); }
+        }
 
-            $url = array_map(['PortaleFunebreNecrologi_Necrologio', 'UrlDaSlug'], $toccati);
+        if (!$cambiati && !$rimossi) { return; }
+
+        self::Differisci(static function () use ($cambiati, $rimossi, $toccati, $necrologi, $primo) {
+
+            // Copia ridotta della foto per le anteprime dei social, pronta prima che qualcuno condivida il necrologio.
+            foreach (array_slice($cambiati, 0, self::IMMAGINI_PER_CONTROLLO) as $slug) {
+                $necrologi[$slug]->ImmagineSocial();
+            }
 
             if (!$primo) {
-                foreach ($toccati as $slug) { PortaleFunebreNecrologi_Repository::SvuotaSingolo($slug); }
-                self::SvuotaCachePagine(array_merge($url, self::UrlPagineLista()));
+                self::SvuotaCachePagine(array_merge(
+                    array_map(['PortaleFunebreNecrologi_Necrologio', 'UrlDaSlug'], $toccati),
+                    self::UrlPagineLista()
+                ));
             }
 
             // A IndexNow solo i necrologi indicizzabili (e quelli rimossi, che vanno tolti dai motori).
@@ -259,13 +332,14 @@ class PortaleFunebreNecrologi_Monitor {
             ));
 
             if ($url_indexnow && self::IsIndexNowAttivo()) {
-                $stato['indexnow']       = $ora;
-                $stato['indexnow_esito'] = self::InviaIndexNow($url_indexnow);
+                $esito = self::InviaIndexNow($url_indexnow);
+                $stato = self::Stato();
+                $stato['indexnow']       = time();
+                $stato['indexnow_esito'] = $esito;
                 $stato['indexnow_url']   = count($url_indexnow);
+                update_option(self::OPZIONE_STATO, $stato, false);
             }
-        }
-
-        update_option(self::OPZIONE_STATO, $stato, false);
+        });
     }
 
     /* ------------------------------------------------------------------

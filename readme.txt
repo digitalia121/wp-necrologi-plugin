@@ -4,7 +4,7 @@ Tags: obituaries, condolences, funeral, memorials, necrologi
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 1.1.2
+Stable tag: 1.1.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -87,3 +87,11 @@ To receive support, contact us at [support@portalefunebre.com](mailto:support@po
 * Removed the "data refresh interval" setting: cached data no longer expires every few minutes, it is refreshed when the obituary changes on the portal (every 5 minutes if WP-Cron is not running)
 * Removed obituaries are detected even when the portal response is incremental; a portal error message is no longer mistaken for an empty obituary list
 * Sharing: on single obituaries the Avada theme Open Graph tags are removed, so Facebook no longer shows the page builder code as the description
+
+= 1.1.3 =
+* Obituary list, slider and single obituary check the portal for changes right after the page has loaded: new obituaries are added, modified ones are updated and removed ones disappear without reloading the page, even when the page comes from a page cache (caching plugins, Cloudflare)
+* The portal is queried at most once every 15 seconds for the list and for each obituary, whatever the number of visitors; page cache purge, social images and IndexNow run after the response has been sent
+* Modified obituaries are tracked with Unix timestamps taken from the portal clock, so a different time zone, daylight saving time or a wrong clock on either server no longer delays or skips updates
+* WP-Cron now runs the check every 15 minutes only as a safety net for sitemaps and IndexNow
+* Public read requests no longer require the nonce, so pages served from an old page cache can still refresh their data
+* The ceremony map and the donations box can appear or disappear when the obituary is updated

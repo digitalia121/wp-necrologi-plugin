@@ -103,7 +103,7 @@ if ($necro) {
 
 <div
   class="post-necrologio portale-funebre-post <?php echo esc_attr($classes); ?>"
-  <?php if ($necro) { ?>data-pfn-rendered="1"<?php } else { ?>style="display: none"<?php } ?>
+  <?php if ($necro) { ?>data-pfn-rendered="1"<?php if ($nome_in_hero && $hero_visibile) { ?> data-nome-in-hero="1"<?php } ?><?php } else { ?>style="display: none"<?php } ?>
   data-pfn-single="1"
   data-slug-necrologio="<?php echo esc_attr($slug_necrologio); ?>"
   data-not-found-url="<?php echo esc_url(get_site_url().'/not-found'); ?>"
@@ -244,15 +244,14 @@ if ($necro) {
   </div>
 
 
-  <?php if ($mostra_mappa) { ?>
-  <div class="necro-mappa">
+  <?php // Sempre nel markup (nascosta se vuota): il luogo puo' essere aggiunto sul portale dopo il caricamento della pagina. ?>
+  <div class="necro-mappa"<?php if (!$mostra_mappa) { ?> style="display: none"<?php } ?>>
 
     <h2>LUOGO DELLA CERIMONIA</h2>
 
     <div class="mappa-cerimonia" id="cerimoniaMap"></div>
 
   </div>
-  <?php } ?>
 
   <?php if ($raccogli_cordogli) { ?>
   <div

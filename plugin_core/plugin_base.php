@@ -66,12 +66,18 @@ function portale_funebre_necrologi_sanitize_ajax_data($data) {
 
 function portale_funebre_necrologi_ajax() {
 
-    if (!check_ajax_referer('portale_funebre_necrologi_ajax', 'nonce', false)) {
+    $azione = isset($_POST['dgplugin_action']) ? sanitize_key(wp_unslash($_POST['dgplugin_action'])) : '';
+
+    /*
+     * Le letture pubbliche (dati dei necrologi gia' visibili sul sito) non
+     * richiedono il nonce: le pagine possono arrivare da una cache di pagina
+     * piu' vecchia della durata del nonce e devono comunque potersi aggiornare.
+     */
+    if (!isset(PluginBase::$AZIONI_PUBBLICHE[$azione]) && !check_ajax_referer('portale_funebre_necrologi_ajax', 'nonce', false)) {
         wp_send_json_error(['message' => 'Nonce non valido.'], 403);
     }
 
     $request = portale_funebre_necrologi_sanitize_ajax_data(wp_unslash($_POST));
-    $azione  = isset($request['dgplugin_action']) ? sanitize_key($request['dgplugin_action']) : '';
 
     if (isset(PluginBase::$ACTIONS[$azione])) {
 
@@ -99,6 +105,8 @@ class PluginBase {
     private $main_plugin_file = '';
     private static $PLUGDATA = [];
     public static  $ACTIONS=[];
+    /** Azioni ajax di sola lettura, eseguibili senza nonce. */
+    public static  $AZIONI_PUBBLICHE=[];
     private static $CSS_VARIABLES=[];
     private $plugin_icon = 'dashicons-admin-home';
 
@@ -240,7 +248,11 @@ class PluginBase {
         return $custom_css ? ":root {\n" . $custom_css . "}\n" : '';
     }
 
-    static function add_ajax_call($nome_call, $fun) { self::$ACTIONS[$nome_call] = $fun; }
+    /** @param bool $pubblica Sola lettura di dati pubblici: non richiede il nonce. */
+    static function add_ajax_call($nome_call, $fun, $pubblica = false) {
+        self::$ACTIONS[$nome_call] = $fun;
+        if ($pubblica) { self::$AZIONI_PUBBLICHE[$nome_call] = true; } else { unset(self::$AZIONI_PUBBLICHE[$nome_call]); }
+    }
 
     static function get_author() { return self::$PLUGDATA['Author']; }
     static function get_author_url() { return self::$PLUGDATA['AuthorURI']; }

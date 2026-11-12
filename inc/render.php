@@ -62,9 +62,12 @@ class PortaleFunebreNecrologi_Render {
 
         $html .= '</div>';
 
+        // data-pfn-h: impronta dei dati, per riconoscere i necrologi modificati sul portale dopo il caricamento.
+        $impronta = ' data-pfn-h="' . esc_attr(PortaleFunebreNecrologi_Repository::Impronta($necro->Dati())) . '"';
+
         return $bottone
-            ? '<div class="necrologio-loop">' . $html . '</div>'
-            : '<a href="' . esc_url($url) . '" class="necrologio-loop">' . $html . '</a>';
+            ? '<div class="necrologio-loop"' . $impronta . '>' . $html . '</div>'
+            : '<a href="' . esc_url($url) . '" class="necrologio-loop"' . $impronta . '>' . $html . '</a>';
     }
 
     /** Slide dello slider (crea_necrologio_slide). */
@@ -95,7 +98,7 @@ class PortaleFunebreNecrologi_Render {
 
         $html .= '</div> </div>';
 
-        return '<a href="' . esc_url($necro->Url()) . '" class="necrologio-slide">' . $html . '</a>';
+        return '<a href="' . esc_url($necro->Url()) . '" class="necrologio-slide" data-pfn-h="' . esc_attr(PortaleFunebreNecrologi_Repository::Impronta($necro->Dati())) . '">' . $html . '</a>';
     }
 
     /** Eta' mostrata sopra al testo del necrologio singolo. */
@@ -138,6 +141,7 @@ class PortaleFunebreNecrologi_Render {
         $dati = $necro->Dati();
 
         $out = [
+            'h'                   => PortaleFunebreNecrologi_Repository::Impronta($dati),
             'slug'                => $necro->Slug(),
             'cordogli'            => $necro->Cordogli(),
             'contatto_principale' => ['whatsapp' => isset($dati->contatto_principale->whatsapp) ? (string) $dati->contatto_principale->whatsapp : ''],
@@ -153,6 +157,22 @@ class PortaleFunebreNecrologi_Render {
         }
 
         return $out;
+    }
+
+    /**
+     * Parti della pagina del singolo necrologio che il JavaScript sostituisce
+     * quando il necrologio e' stato modificato sul portale dopo che la pagina
+     * e' stata generata (o messa in cache).
+     */
+    static function PartiSingolo(PortaleFunebreNecrologi_Necrologio $necro) {
+        return [
+            'h'     => PortaleFunebreNecrologi_Repository::Impronta($necro->Dati()),
+            'nome'  => $necro->Nome(),
+            'testo' => wp_kses_post(self::EtaSingolo($necro) . $necro->Testo()),
+            'foto'  => self::FotoSingolo($necro),
+            'links' => self::Links($necro),
+            'dati'  => self::DatiScript($necro),
+        ];
     }
 
     /** Dati di una cerimonia (mostra_dati_cerimonia). */
@@ -237,10 +257,11 @@ class PortaleFunebreNecrologi_Render {
     /**
      * Lista dei necrologi pronta per il rendering.
      *
+     * @param bool $verifica Verifica prima le modifiche sul portale (richieste ajax dopo il caricamento).
      * @return PortaleFunebreNecrologi_Necrologio[]|null null se il portale non risponde.
      */
-    static function Necrologi() {
-        $lista = PortaleFunebreNecrologi_Repository::GetLista();
+    static function Necrologi($verifica = false) {
+        $lista = $verifica ? PortaleFunebreNecrologi_Repository::RinfrescaLista() : PortaleFunebreNecrologi_Repository::GetLista();
         if (is_wp_error($lista)) { return null; }
         return array_map(static function ($dati) { return new PortaleFunebreNecrologi_Necrologio($dati); }, $lista);
     }

@@ -6,9 +6,10 @@ if (!defined('ABSPATH')) { exit; }
  * Unico punto di lettura dei necrologi dal portale, con cache.
  *
  * - Copia usata dal sito (transient): non scade a tempo breve, perche' il
- *   controllo di ogni minuto (PortaleFunebreNecrologi_Monitor) la svuota solo
- *   per i necrologi modificati sul portale. Se quel controllo non gira
- *   (WP-Cron fermo) la copia torna a durare pochi minuti.
+ *   controllo dei necrologi modificati (PortaleFunebreNecrologi_Monitor,
+ *   avviato dalle visite dopo il caricamento della pagina e da WP-Cron) la
+ *   aggiorna solo per i necrologi cambiati sul portale. Se quel controllo
+ *   non gira da un po' la copia torna a durare pochi minuti.
  * - Copia di riserva (7 giorni): usata quando il portale non risponde, cosi'
  *   le pagine restano online anche durante un disservizio.
  * - Anche l'esito "necrologio inesistente" viene messo in cache per qualche
@@ -18,9 +19,9 @@ if (!defined('ABSPATH')) { exit; }
  */
 class PortaleFunebreNecrologi_Repository {
 
-    /** Con il controllo di ogni minuto attivo: le modifiche arrivano da li', la scadenza e' solo una rete di sicurezza. */
+    /** Con il controllo attivo: le modifiche arrivano da li', la scadenza e' solo una rete di sicurezza. */
     const DURATA_SINCRONIZZATA   = DAY_IN_SECONDS;
-    /** Senza il controllo di ogni minuto i dati si rinnovano a tempo. */
+    /** Senza controlli recenti i dati si rinnovano a tempo. */
     const DURATA_SENZA_CONTROLLO = 5 * MINUTE_IN_SECONDS;
     const DURATA_RISERVA     = WEEK_IN_SECONDS;
     const DURATA_ASSENTE     = 5 * MINUTE_IN_SECONDS;
@@ -56,18 +57,124 @@ class PortaleFunebreNecrologi_Repository {
 
         $esito = self::InterpretaSingolo(self::Api() ? self::Api()->TrovaNecrologioSingolo($slug) : null);
 
+        self::SalvaSingolo($chiave, $esito);
+
+        if (is_wp_error($esito)) {
+            $riserva = get_transient('pfn_r_' . $chiave);
+            if (is_object($riserva)) { $esito = $riserva; }
+        }
+
+        return self::$memoria[$chiave] = $esito;
+    }
+
+    /** Salva in cache l'esito della lettura di un singolo necrologio (un errore non tocca la cache). */
+    private static function SalvaSingolo($chiave, $esito) {
         if (is_object($esito)) {
             set_transient(self::Chiave($chiave), $esito, self::Durata());
             set_transient('pfn_r_' . $chiave, $esito, self::DURATA_RISERVA);
         } elseif ($esito === false) {
             set_transient(self::Chiave($chiave), self::ASSENTE, self::DURATA_ASSENTE);
             delete_transient('pfn_r_' . $chiave);
-        } else {
-            $riserva = get_transient('pfn_r_' . $chiave);
-            if (is_object($riserva)) { $esito = $riserva; }
+        }
+    }
+
+    /* ------------------------------------------------------------------
+     * Verifica dopo il caricamento della pagina
+     *
+     * Lista, slider e necrologio singolo, una volta caricata la pagina,
+     * chiedono via ajax se i dati sono cambiati sul portale. Cosi' le
+     * modifiche compaiono subito anche quando la pagina arriva da una cache
+     * (plugin di cache, Cloudflare, ...) o quando WP-Cron non gira.
+     * Il portale viene interrogato al massimo una volta ogni
+     * INTERVALLO_VERIFICA secondi (per la lista e per ciascun necrologio),
+     * qualunque sia il numero di visite.
+     * ---------------------------------------------------------------- */
+
+    /** Intervallo minimo (secondi) tra due verifiche sul portale avviate dalle visite. */
+    const INTERVALLO_VERIFICA = 15;
+
+    static function IntervalloVerifica() {
+        return max(5, (int) apply_filters('portale_funebre_necrologi_intervallo_verifica', self::INTERVALLO_VERIFICA));
+    }
+
+    /**
+     * Lista dei necrologi aggiornata: se non e' stata verificata di recente
+     * esegue il controllo dei necrologi modificati sul portale (che aggiorna
+     * anche cache, sitemap e cache di pagina), poi restituisce la lista.
+     *
+     * @return array|WP_Error Come GetLista().
+     */
+    static function RinfrescaLista() {
+
+        if (self::Prenota('pfn_v_lista')) {
+            PortaleFunebreNecrologi_Monitor::Controlla();
+            unset(self::$memoria['lista']);
         }
 
-        return self::$memoria[$chiave] = $esito;
+        return self::GetLista();
+    }
+
+    /**
+     * Singolo necrologio aggiornato: se non e' stato verificato di recente lo
+     * rilegge dal portale e, se e' cambiato, aggiorna la cache e svuota la
+     * cache di pagina del suo URL.
+     *
+     * @return object|false|WP_Error Come GetSingolo().
+     */
+    static function RinfrescaSingolo($slug) {
+
+        $slug = sanitize_title($slug);
+
+        if ($slug === '') { return false; }
+
+        $chiave = 's_' . md5($slug);
+
+        if (self::Prenota('pfn_v_' . $chiave) && self::Api()) {
+
+            $prima = get_transient(self::Chiave($chiave));
+            if (!is_object($prima)) { $prima = get_transient('pfn_r_' . $chiave); }
+
+            $esito = self::InterpretaSingolo(self::Api()->TrovaNecrologioSingolo($slug));
+
+            if (!is_wp_error($esito)) {
+
+                self::SalvaSingolo($chiave, $esito);
+                unset(self::$memoria[$chiave]);
+
+                $cambiato = is_object($esito)
+                    ? (!is_object($prima) || self::Impronta($prima) !== self::Impronta($esito))
+                    : is_object($prima);
+
+                if ($cambiato) {
+                    $url = PortaleFunebreNecrologi_Necrologio::UrlDaSlug($slug);
+                    PortaleFunebreNecrologi_Monitor::Differisci(static function () use ($url) {
+                        PortaleFunebreNecrologi_Monitor::SvuotaCachePagine([$url]);
+                    });
+                }
+            }
+        }
+
+        return self::GetSingolo($slug);
+    }
+
+    /**
+     * Impronta breve dei dati di un necrologio: cambia quando cambia
+     * qualunque dato restituito dal portale.
+     */
+    static function Impronta($dati) {
+        return substr(md5((string) wp_json_encode($dati)), 0, 12);
+    }
+
+    /**
+     * Prenota una verifica: true se nessuna verifica con questo nome e' stata
+     * fatta negli ultimi INTERVALLO_VERIFICA secondi (e da ora risulta fatta).
+     * Si prenota prima di chiamare il portale, cosi' anche un portale lento o
+     * fermo viene interrogato al massimo una volta per intervallo.
+     */
+    private static function Prenota($nome) {
+        if (get_transient($nome)) { return false; }
+        set_transient($nome, 1, self::IntervalloVerifica());
+        return true;
     }
 
     /**

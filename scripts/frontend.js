@@ -369,11 +369,78 @@ window.DgNecrologi = new function () {
     this.riempi_donazioni = function (sezioneDona, necro) {
         if (!sezioneDona || !settings.mostra_donazioni) { return; }
         let donacode = necro.donazioni ? scheda_donazioni(necro.donazioni) : '';
-        if (donacode) {
-            sezioneDona.innerHTML = donacode;
-        } else {
-            sezioneDona.remove();
-        }
+        // Nascosta e non rimossa: se i dati arrivano con un aggiornamento la scheda ricompare.
+        sezioneDona.innerHTML = donacode;
+        sezioneDona.style.display = donacode ? '' : 'none';
+    };
+
+    /*
+     * Verifica dopo il caricamento della pagina: chiede al sito se i
+     * necrologi mostrati sono cambiati sul portale e aggiorna la pagina.
+     * Parte solo a caricamento completato, per non rallentare la pagina.
+     */
+    this.dopo_il_caricamento = function (fn) {
+        if (document.readyState === 'complete') { setTimeout(fn, 0); return; }
+        window.addEventListener('load', function () { setTimeout(fn, 0); });
+    };
+
+    // Elementi di lista/slider con l'impronta dei dati, nell'ordine, escluse le copie create da slick.
+    let elementi_con_impronta = function ($looper) {
+        return $looper.find('[data-pfn-h]').filter(function () {
+            return !jQuery(this).closest('.slick-cloned').length;
+        });
+    };
+
+    /**
+     * Lista e slider: aggiunge i necrologi nuovi, sostituisce i modificati,
+     * toglie i rimossi e rispetta il nuovo ordine. Con slick attivo lo
+     * slider viene ricostruito (solo se qualcosa e' cambiato).
+     *
+     * @param avvia_slick funzione che inizializza slick sul contenitore (o null)
+     */
+    this.verifica_lista = function ($looper, tipo, avvia_slick) {
+
+        let noti = elementi_con_impronta($looper).map(function () { return this.getAttribute('data-pfn-h'); }).get();
+
+        DgPlugin.ajax('aggiorna_necrologi', function (res) {
+
+            if (!res || res.stato !== 'aggiornato' || !Array.isArray(res.voci)) { return; }
+
+            let slick    = $looper.hasClass('slick-initialized') && typeof $looper.slick === 'function';
+            let corrente = slick ? ($looper.slick('slickCurrentSlide') || 0) : 0;
+
+            if (slick) { $looper.slick('unslick'); }
+
+            let esistenti = {};
+            elementi_con_impronta($looper).each(function () { esistenti[this.getAttribute('data-pfn-h')] = this; });
+
+            let frammento = document.createDocumentFragment();
+            let numero    = 0;
+
+            res.voci.forEach(function (voce) {
+                let el = esistenti[voce.h];
+                if (el) {
+                    delete esistenti[voce.h];
+                } else if (voce.html) {
+                    let tmp = document.createElement('div');
+                    tmp.innerHTML = voce.html;
+                    el = tmp.firstElementChild;
+                    if (el) { el.classList.add('pfn-aggiornato'); }
+                }
+                if (el) { frammento.appendChild(el); numero++; }
+            });
+
+            // Rimasti senza corrispondenza: rimossi dal portale o sostituiti dalla versione modificata.
+            Object.keys(esistenti).forEach(function (h) { jQuery(esistenti[h]).remove(); });
+
+            $looper.get(0).appendChild(frammento);
+
+            if (slick && avvia_slick) {
+                avvia_slick();
+                if (numero > 0) { $looper.slick('slickGoTo', Math.min(corrente, numero - 1), true); }
+            }
+
+        }, { tipo: tipo, noti: noti.join(',') });
     };
 
 
@@ -498,8 +565,31 @@ jQuery(document).ready(function ($) {
             slug_singolo: $looper.data('slug-singolo')
         };
 
-        // Box gia' generati lato server: non serve caricarli.
-        if ($looper.attr('data-pfn-rendered') !== '1') {
+        let avvia_slick = null;
+
+        if ($looper.data('tipo-vis') === 'grid' && $looper.hasClass('slider') && typeof $looper.slick === 'function') {
+            avvia_slick = function () {
+                $looper.slick({
+                    dots: false,
+                    infinite: true,
+                    speed: 300,
+                    slidesToShow: 8,
+                    slidesToScroll: 8,
+                    responsive: [
+                        { breakpoint: 1024, settings: { slidesToShow: 6, slidesToScroll: 6, infinite: true, dots: true } },
+                        { breakpoint: 800, settings: { slidesToShow: 4, slidesToScroll: 4, infinite: true, dots: true } },
+                        { breakpoint: 600, settings: { slidesToShow: 3, slidesToScroll: 3, infinite: true, dots: true } },
+                        { breakpoint: 480, settings: { slidesToShow: 2, slidesToScroll: 2 } },
+                        { breakpoint: 380, settings: { slidesToShow: 1, slidesToScroll: 1 } }
+                    ]
+                });
+            };
+        }
+
+        // Box gia' generati lato server: a pagina caricata si verifica se sul portale ci sono novita'.
+        if ($looper.attr('data-pfn-rendered') === '1') {
+            DgNecrologi.dopo_il_caricamento(function () { DgNecrologi.verifica_lista($looper, 'lista', avvia_slick); });
+        } else {
             DgPlugin.ajax('get_lista_necrologi', function (cerimonie) {
                 cerimonie = DgNecrologi.ordina_necrologi_lista(cerimonie);
                 for (let i in cerimonie) {
@@ -512,22 +602,7 @@ jQuery(document).ready(function ($) {
             });
         }
 
-        if ($looper.data('tipo-vis') === 'grid' && $looper.hasClass('slider') && typeof $looper.slick === 'function') {
-            $looper.slick({
-                dots: false,
-                infinite: true,
-                speed: 300,
-                slidesToShow: 8,
-                slidesToScroll: 8,
-                responsive: [
-                    { breakpoint: 1024, settings: { slidesToShow: 6, slidesToScroll: 6, infinite: true, dots: true } },
-                    { breakpoint: 800, settings: { slidesToShow: 4, slidesToScroll: 4, infinite: true, dots: true } },
-                    { breakpoint: 600, settings: { slidesToShow: 3, slidesToScroll: 3, infinite: true, dots: true } },
-                    { breakpoint: 480, settings: { slidesToShow: 2, slidesToScroll: 2 } },
-                    { breakpoint: 380, settings: { slidesToShow: 1, slidesToScroll: 1 } }
-                ]
-            });
-        }
+        if (avvia_slick) { avvia_slick(); }
     });
 
     $('.lista-necrologi[data-pfn-slider]').each(function () {
@@ -541,10 +616,7 @@ jQuery(document).ready(function ($) {
             slug_singolo: $looper.data('slug-singolo')
         };
 
-        let avvia_slider = function () {
-
-            $loader.css({display: 'none'});
-
+        let avvia_slick = function () {
             if (typeof $looper.slick == 'function') {
                 $looper.slick({
                     dots: false,
@@ -564,9 +636,15 @@ jQuery(document).ready(function ($) {
             }
         };
 
-        // Slide gia' generate lato server: si avvia direttamente lo slider.
+        let avvia_slider = function () {
+            $loader.css({display: 'none'});
+            avvia_slick();
+        };
+
+        // Slide gia' generate lato server: si avvia subito lo slider e, a pagina caricata, si verificano le novita'.
         if ($looper.attr('data-pfn-rendered') === '1') {
             avvia_slider();
+            DgNecrologi.dopo_il_caricamento(function () { DgNecrologi.verifica_lista($looper, 'slider', avvia_slick); });
             return;
         }
 
@@ -587,6 +665,20 @@ jQuery(document).ready(function ($) {
         let $necroMappa = $post.find('.necro-mappa');
         let slug = $post.data('slug-necrologio');
         let noPopUp = $post.data('no-popup') == 1;
+
+        let mappa_attuale = null;
+        let mostra_mappa = function (indirizzo) {
+            indirizzo = indirizzo || '';
+            if (indirizzo === mappa_attuale) { return; }
+            mappa_attuale = indirizzo;
+            if (indirizzo) {
+                $necroMappa.find('.mappa-cerimonia').html(crea_embed_map(indirizzo, 14));
+                $necroMappa.show();
+            } else {
+                $necroMappa.find('.mappa-cerimonia').empty();
+                $necroMappa.hide();
+            }
+        };
 
         // prerenderizzato: contenuto gia' generato lato server, qui si attivano solo le parti interattive.
         let attiva_necrologio = function (cerimonia, prerenderizzato) {
@@ -629,11 +721,7 @@ jQuery(document).ready(function ($) {
                 $post.find('.invia-cordoglio').remove();
             }
 
-            if (cerimonia.mappa) {
-                $necroMappa.find('.mappa-cerimonia').html(crea_embed_map(cerimonia.mappa), 14);
-            } else {
-                $necroMappa.remove();
-            }
+            mostra_mappa(cerimonia.mappa);
 
             $post.find('.invia-cordoglio').click(function () {
                 if (noPopUp) {
@@ -691,6 +779,51 @@ jQuery(document).ready(function ($) {
             });
         };
 
+        /*
+         * Necrologio modificato sul portale dopo che la pagina e' stata
+         * generata (o messa in cache): si sostituiscono le parti cambiate,
+         * senza toccare il form di cordoglio (che potrebbe essere in compilazione).
+         */
+        let applica_aggiornamento = function (parti, dati_precedenti) {
+
+            let nome_precedente = $post.find('.necro-nome-defunto').first().text() || $post.find('.necro-hero-section .titolo-hero').first().text();
+
+            $post.find('.necro-nome-defunto').text(parti.nome);
+            if ($post.attr('data-nome-in-hero') === '1') {
+                $post.find('.necro-hero-section .titolo-hero').text(parti.nome);
+            }
+            if (nome_precedente && parti.nome && nome_precedente !== parti.nome && document.title.indexOf(nome_precedente) !== -1) {
+                document.title = document.title.split(nome_precedente).join(parti.nome);
+            }
+
+            $post.find('.necro-testo').html(parti.testo);
+            $post.find('.necro-content picture').first().html(parti.foto);
+            $post.find('.custom-links').html(parti.links);
+
+            let dati = parti.dati || {};
+
+            DgNecrologi.riempi_donazioni($post.find('.sezione-donazioni').get(0), dati);
+            mostra_mappa(dati.mappa);
+
+            let wa = dati.contatto_principale ? dati.contatto_principale.whatsapp : '';
+            if (wa && (!dati_precedenti.contatto_principale || dati_precedenti.contatto_principale.whatsapp !== wa)) {
+                $post.find('.button.scrivi-su-whatsapp').attr('href', 'https://api.whatsapp.com/send?phone=' + wa + '&text=');
+            }
+        };
+
+        let verifica_singolo = function (dati) {
+            DgPlugin.ajax('aggiorna_necrologio', function (res) {
+                if (!res) { return; }
+                if (res.stato === 'rimosso') {
+                    window.location = $post.data('not-found-url');
+                    return;
+                }
+                if (res.stato === 'aggiornato') {
+                    applica_aggiornamento(res, dati);
+                }
+            }, { slug: slug, h: dati.h || '' });
+        };
+
         let datiPagina = $post.find('script.pfn-necrologio-dati').first();
 
         if (datiPagina.length) {
@@ -698,6 +831,8 @@ jQuery(document).ready(function ($) {
             try { dati = JSON.parse(datiPagina.text()); } catch (e) { dati = null; }
             if (dati) {
                 attiva_necrologio(dati, true);
+                // A pagina caricata si verifica se il necrologio e' stato modificato sul portale.
+                DgNecrologi.dopo_il_caricamento(function () { verifica_singolo(dati); });
                 return;
             }
         }

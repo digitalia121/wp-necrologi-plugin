@@ -951,3 +951,11 @@ a.necrologio-loop,
 
     
 }
+/* Necrologi aggiunti o modificati dopo il caricamento della pagina. */
+.lista-necrologi .pfn-aggiornato {
+    animation: pfn-comparsa .5s ease-out;
+}
+@keyframes pfn-comparsa {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
