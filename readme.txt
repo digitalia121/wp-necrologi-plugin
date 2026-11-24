@@ -4,7 +4,7 @@ Tags: obituaries, condolences, funeral, memorials, necrologi
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 1.1.3
+Stable tag: 1.1.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -95,3 +95,7 @@ To receive support, contact us at [support@portalefunebre.com](mailto:support@po
 * WP-Cron now runs the check every 15 minutes only as a safety net for sitemaps and IndexNow
 * Public read requests no longer require the nonce, so pages served from an old page cache can still refresh their data
 * The ceremony map and the donations box can appear or disappear when the obituary is updated
+
+= 1.1.4 =
+* Sharing: sharper obituary photo on Facebook, WhatsApp and other social networks; the image is now 640px high (it was 300px wide), small photos are enlarged and photos wider than 590px are cropped equally on both sides
+* Sharing: higher image quality, with the file size kept under the WhatsApp limit by reducing the dimensions of very heavy images
