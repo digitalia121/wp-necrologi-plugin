@@ -161,15 +161,24 @@ class PortaleFunebreNecrologi extends PortaleFunebreNecrologi\PluginBase {
     }
 
     /**
-     * Larghezza (in px) della copia usata come og:image. Facebook mostra
+     * Larghezza massima (in px) della copia usata come og:image. Facebook mostra
      * l'anteprima grande, con l'immagine orizzontale in alto, solo quando
      * l'immagine e' almeno 600x315: restando sotto quella soglia usa la
      * scheda compatta, con la foto (verticale) sulla sinistra del testo.
      */
-    const SHARE_IMG_WIDTH = 300;
+    const SHARE_IMG_MAX_WIDTH = 590;
+
+    /** Altezza (in px) della copia: sempre questa, anche ingrandendo le foto piccole. */
+    const SHARE_IMG_HEIGHT = 640;
+
+    /** WhatsApp richiede immagini sotto i 600 KB: teniamo un margine. */
+    const SHARE_IMG_MAX_BYTES = 560 * 1024;
+
+    /** Qualita' di compressione (JPEG e WebP) della copia per i social. */
+    const SHARE_IMG_QUALITA = 88;
 
     /**
-     * Crea (una sola volta) una copia ridotta della foto del necrologio dentro
+     * Crea (una sola volta) una copia ridimensionata della foto del necrologio dentro
      * la cartella uploads e ne restituisce url e dimensioni reali. Se qualcosa
      * non va, si ripiega sull'immagine originale del portale.
      *
@@ -206,12 +215,32 @@ class PortaleFunebreNecrologi extends PortaleFunebreNecrologi\PluginBase {
                 return $originale;
             }
 
-            // Solo la larghezza: l'altezza segue le proporzioni, cosi' il
-            // formato verticale resta intatto. Se l'immagine e' gia' piu'
-            // piccola resize() fallisce e salviamo la copia com'e'.
-            $editor->resize(self::SHARE_IMG_WIDTH, null);
+            $editor->set_quality(self::SHARE_IMG_QUALITA);
 
-            $salvato = $editor->save($percorso);
+            // Altezza fissa; se la foto risulta troppo larga si taglia in
+            // parti uguali a destra e a sinistra. Si usa crop() perche'
+            // resize() non ingrandisce. Se la copia pesa troppo per WhatsApp
+            // (capita coi PNG) si riprova con altezze minori.
+            foreach ([self::SHARE_IMG_HEIGHT, 480, 360] as $altezza) {
+
+                $dim      = $editor->get_size();
+                $max      = (int) round(self::SHARE_IMG_MAX_WIDTH * $altezza / self::SHARE_IMG_HEIGHT);
+                $larga    = min($max, max(1, (int) round($dim['width'] * $altezza / $dim['height'])));
+                $ritaglio = min($dim['width'], max(1, (int) round($larga * $dim['height'] / $altezza)));
+                $sinistra = (int) floor(($dim['width'] - $ritaglio) / 2);
+
+                $esito = $editor->crop($sinistra, 0, $ritaglio, $dim['height'], $larga, $altezza);
+
+                if (is_wp_error($esito)) { $salvato = $esito; break; }
+
+                $salvato = $editor->save($percorso);
+
+                if (is_wp_error($salvato) || empty($salvato['path'])) { break; }
+
+                clearstatcache(true, $salvato['path']);
+
+                if (filesize($salvato['path']) <= self::SHARE_IMG_MAX_BYTES) { break; }
+            }
 
             wp_delete_file($tmp);
 
@@ -250,8 +279,8 @@ class PortaleFunebreNecrologi extends PortaleFunebreNecrologi\PluginBase {
 
         if (!in_array($estensione, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true)) { $estensione = 'jpg'; }
 
-        // La chiave e' l'URL originale: se la foto cambia, cambia anche il file.
-        $nome = md5($img_url).'-'.self::SHARE_IMG_WIDTH.'.'.$estensione;
+        // La chiave e' l'URL originale: se la foto o il formato cambiano, cambia anche il file.
+        $nome = md5($img_url).'-'.self::SHARE_IMG_MAX_WIDTH.'x'.self::SHARE_IMG_HEIGHT.'.'.$estensione;
 
         return [
             'cartella' => $cartella,
